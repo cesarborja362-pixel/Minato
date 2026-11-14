@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#059669">
+    <meta name="author" content="Cesar Borja">
+    <meta name="description" content="ViruPy - Control de sueldo, ciclo de 30 días y facturas en Guaraníes. Desarrollado por Cesar Borja.">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ViruPy">
+    <title>ViruPy - Control Financiero</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23059669'/><text x='50' y='68' font-size='56' font-family='sans-serif' font-weight='bold' text-anchor='middle' fill='%23ffffff'>₲</text></svg>">
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (xlsx) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --bg-outer: #090d16;
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --emerald-primary: #059669;
+            --emerald-dark: #047857;
+            --emerald-light: #34d399;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-outer);
+            color: var(--text-primary);
+            margin: 0;
+            padding-bottom: 86px;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+
+        .app-shell {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background-color: var(--bg-main);
+            border-left: 1px solid var(--border-subtle);
+            border-right: 1px solid var(--border-subtle);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.65);
+            position: relative;
+        }
+
+        /* Pantalla de Bloqueo y Seguridad */
+        #lockScreen {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at top, #1e293b 0%, #0f172a 60%, #090d16 100%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .lock-card {
+            width: 100%;
+            max-width: 360px;
+            background-color: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            padding: 1.75rem 1.5rem;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Header Sticky */
+        .app-header {
+            background-color: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-subtle);
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+        }
+
+        /* Tarjetas Modernas */
+        .vp-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 1.25rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        .hero-card {
+            background: linear-gradient(135deg, var(--emerald-dark) 0%, #065f46 42%, var(--bg-card) 100%);
+            border: 1px solid rgba(52, 211, 153, 0.28);
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(5, 150, 105, 0.2);
+        }
+
+        /* Botones Rápidos Billetes Guaraníes */
+        .banknote-btn {
+            background: rgba(5, 150, 105, 0.14);
+            border: 1px solid rgba(52, 211, 153, 0.35);
+            color: var(--emerald-light);
+            border-radius: 1rem;
+            font-weight: 700;
+            padding: 0.65rem 0.35rem;
+            transition: all 0.15s ease;
+        }
+
+        .banknote-btn:hover, .banknote-btn:active {
+            background-color: var(--emerald-primary);
+            border-color: var(--emerald-primary);
+            color: #ffffff;
+            transform: scale(0.97);
+        }
+
+        /* Estados Visuales de Facturas */
+        .bill-near-due {
+            border-color: rgba(245, 158, 11, 0.7) !important;
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.14) 0%, var(--bg-card) 100%);
+        }
+
+        .bill-overdue {
+            border-color: rgba(239, 68, 68, 0.75) !important;
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.16) 0%, var(--bg-card) 100%);
+        }
+
+        /* Barra de Navegación Inferior */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-width: 480px;
+            margin: 0 auto;
+            background-color: rgba(15, 23, 42, 0.96);
+            backdrop-filter: blur(14px);
+            border-top: 1px solid var(--border-subtle);
+            z-index: 1030;
+            display: flex;
+            justify-content: space-around;
+            padding: 0.45rem 0.25rem;
+        }
+
+        .nav-tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            flex: 1;
+            padding: 0.45rem 0.25rem;
+            border-radius: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .nav-tab-btn.active {
+            color: var(--emerald-light);
+            background-color: rgba(5, 150, 105, 0.18);
+        }
+
+        .nav-tab-btn i {
+            font-size: 1.15rem;
+        }
+
+        /* Inputs y Botones */
+        .form-control, .form-select {
+            background-color: #0f172a;
+            border-color: rgba(255, 255, 255, 0.14);
+            color: #f8fafc;
+            border-radius: 0.85rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: #0f172a;
+            border-color: var(--emerald-primary);
+            color: #ffffff;
+            box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.25);
+        }
+
+        .btn-emerald {
+            background-color: var(--emerald-primary);
+            border-color: var(--emerald-primary);
+            color: #ffffff;
+        }
+
+        .btn-emerald:hover, .btn-emerald:active {
+            background-color: var(--emerald-dark);
+            border-color: var(--emerald-dark);
+            color: #ffffff;
+        }
+
+        .toast-container {
+            z-index: 1080;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- =========================================================
+         PANTALLA DE BLOQUEO Y SEGURIDAD (#lockScreen)
+         ========================================================= -->
+    <div id="lockScreen" style="display: none;">
+        <div class="lock-card text-center">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-4 mb-3 shadow" style="width: 68px; height: 68px; background: linear-gradient(135deg, #059669, #047857);">
+                <i class="fa-solid fa-wallet text-white fs-2"></i>
+            </div>
+            <h2 class="fw-bold text-white mb-1">ViruPy</h2>
+            <p class="text-secondary small mb-3" id="lockWelcomeUser">Hola, Usuario • Acceso Protegido</p>
+
+            <form onsubmit="handleUnlockSubmit(event)">
+                <div class="input-group mb-2">
+                    <input type="password" id="lockPasswordInput" class="form-control form-control-lg text-center fw-bold" placeholder="Contraseña o PIN" autocomplete="current-password" required>
+                    <button type="button" class="btn btn-outline-secondary rounded-end-3" onclick="togglePasswordVisibility('lockPasswordInput', this)" title="Mostrar / Ocultar">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+                <div id="lockErrorMsg" class="text-danger small fw-semibold mb-2 d-none">
+                    <i class="fa-solid fa-circle-exclamation me-1"></i>Contraseña o PIN incorrecto.
+                </div>
+                <button type="submit" class="btn btn-emerald w-100 fw-bold rounded-3 py-2 mt-1">
+                    <i class="fa-solid fa-unlock-keyhole me-1"></i> Desbloquear ViruPy
+                </button>
+            </form>
+        </div>
+
+        <!-- Firma discreta al pie de la pantalla de bloqueo -->
+        <div class="position-absolute bottom-0 mb-4 text-center px-3">
+            <small class="text-secondary d-block" style="font-size: 0.75rem;">
+                Desarrollado por <strong class="text-success">Cesar Borja</strong> • Paraguay © 2026
+            </small>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         CONTENEDOR PRINCIPAL DE LA APLICACIÓN
+         ========================================================= -->
+    <div class="app-shell">
+        
+        <!-- Barra Superior -->
+        <header class="app-header px-3 py-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <div class="rounded-3 d-flex align-items-center justify-content-center fw-bold text-white shadow-sm" style="width: 40px; height: 40px; background: linear-gradient(135deg, #059669, #047857);">
+                    ₲
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="fw-bold fs-6 text-white">ViruPy</span>
+                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25" style="font-size: 0.65rem;">PYG</span>
+                    </div>
+                    <small class="text-secondary d-block" style="font-size: 0.72rem;" id="headerSubtitle">Hola, Usuario • Cobro día 25</small>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" id="btnHeaderLock" class="btn btn-sm btn-outline-warning rounded-3" onclick="lockApp()" title="Bloquear App">
+                    <i class="fa-solid fa-lock"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Área Principal de Vistas -->
+        <main class="p-3">
+
+            <!-- Alerta Global de Facturas Próximas (<= 5 días) o Vencidas -->
+            <div id="globalBillBanner" class="alert alert-warning rounded-4 d-none align-items-center justify-content-between gap-2 py-2 px-3 mb-3 border-warning border-opacity-50" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-bell text-warning"></i>
+                    <span class="small fw-semibold" id="globalBillBannerText"></span>
+                </div>
+                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold rounded-3 py-0 px-2" onclick="switchTab('bills')">Ver</button>
+            </div>
+
+            <!-- =====================================================
+                 PESTAÑA 1: INICIO (RESUMEN, SEMÁFORO Y GASTOS)
+                 ===================================================== -->
+            <section id="tab-home" class="app-tab">
+                
+                <!-- Tarjeta Principal: Disponible Neto del Ciclo -->
+                <div class="hero-card p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-uppercase text-light opacity-75 fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Disponible Neto del Ciclo</span>
+                        <span class="badge rounded-pill bg-dark bg-opacity-75 text-light border border-light border-opacity-25" id="badgeDaysLeft">30 días rest.</span>
+                    </div>
+                    <h2 class="fw-extrabold text-white mb-3" id="displayNetBalance">₲ 0</h2>
+
+                    <div class="row g-2 pt-2 border-top border-light border-opacity-15 text-center">
+                        <div class="col-4 border-end border-light border-opacity-15">
+                            <small class="text-light opacity-75 d-block" style="font-size: 0.68rem;">Sueldo Base</small>
+                            <span class="fw-bold text-white small" id="displayBaseSalary">₲ 0</span>
+                        </div>
+                        <div class="col-4 border-end border-light border-opacity-15">
+                            <small class="text-light opacity-75 d-block" style="font-size: 0.68rem;">Facturas Pagadas</small>
+                            <span class="fw-bold text-warning small" id="displayPaidBills">₲ 0</span>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-light opacity-75 d-block" style="font-size: 0.68rem;">Gastos Ciclo</small>
+                            <span class="fw-bold text-info small" id="displayCycleExpenses">₲ 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Semáforo de Gasto Diario -->
+                <div class="vp-card p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold small text-uppercase text-secondary"><i class="fa-solid fa-gauge-high me-1 text-success"></i>Semáforo Diario</span>
+                        <span class="badge rounded-pill bg-success" id="dailyStatusBadge">Dentro del límite</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-end mb-2">
+                        <div>
+                            <small class="text-secondary d-block" style="font-size: 0.72rem;">Límite Diario Sugerido</small>
+                            <h4 class="fw-bold text-success mb-0" id="displayDailyLimit">₲ 0</h4>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-secondary d-block" style="font-size: 0.72rem;">Gastado Hoy</small>
+                            <span class="fw-bold fs-6 text-white" id="displayTodaySpent">₲ 0</span>
+                        </div>
+                    </div>
+
+                    <div class="progress bg-dark" style="height: 10px; border-radius: 1rem;">
+                        <div id="dailyProgressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%; transition: width 0.35s ease;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <small class="text-secondary" style="font-size: 0.68rem;">Facturas no afectan este límite</small>
+                        <small class="text-secondary fw-semibold" style="font-size: 0.68rem;" id="dailyPercentLabel">0%</small>
+                    </div>
+                </div>
+
+                <!-- Registro Rápido de Billetes Paraguayos -->
+                <div class="vp-card p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold small text-uppercase text-secondary"><i class="fa-solid fa-money-bill-wave me-1 text-success"></i>Billetes Rápidos (1-Toque)</span>
+                        <small class="text-success" style="font-size: 0.7rem;">Ingreso directo</small>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <button type="button" class="btn banknote-btn w-100" onclick="quickAddBanknote(20000)">
+                                <small class="d-block opacity-75" style="font-size: 0.65rem;">Guaraníes</small>
+                                + 20.000
+                            </button>
+                        </div>
+                        <div class="col-4">
+                            <button type="button" class="btn banknote-btn w-100" onclick="quickAddBanknote(50000)">
+                                <small class="d-block opacity-75" style="font-size: 0.65rem;">Guaraníes</small>
+                                + 50.000
+                            </button>
+                        </div>
+                        <div class="col-4">
+                            <button type="button" class="btn banknote-btn w-100" onclick="quickAddBanknote(100000)">
+                                <small class="d-block opacity-75" style="font-size: 0.65rem;">Guaraníes</small>
+                                + 100.000
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulario de Registro de Gasto Cotidiano -->
+                <div class="vp-card p-3 mb-3">
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-plus-circle me-1 text-success"></i>Registrar Gasto Cotidiano</h6>
+                    <form id="expenseForm" onsubmit="handleAddExpense(event)">
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small text-secondary mb-1">Monto (₲)</label>
+                                <input type="text" inputmode="numeric" id="expAmount" class="form-control form-control-sm fw-bold" placeholder="Ej: 35.000" oninput="formatCurrencyInput(this)" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-secondary mb-1">Categoría</label>
+                                <select id="expCategory" class="form-select form-select-sm"></select>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-7">
+                                <label class="form-label small text-secondary mb-1">Descripción</label>
+                                <input type="text" id="expDesc" class="form-control form-control-sm" placeholder="Ej: Almuerzo, combustible..." required>
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label small text-secondary mb-1">Fecha</label>
+                                <input type="date" id="expDate" class="form-control form-control-sm" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-emerald w-100 fw-bold rounded-3 py-2">
+                            <i class="fa-solid fa-check me-1"></i> Guardar Gasto
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Lista Reciente de Gastos -->
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold small text-uppercase text-secondary mb-0">Movimientos Recientes</h6>
+                        <span class="badge bg-secondary bg-opacity-25 text-secondary" id="expensesCountBadge">0</span>
+                    </div>
+                    <div id="recentExpensesList" class="d-flex flex-column gap-2"></div>
+                </div>
+            </section>
+
+            <!-- =====================================================
+                 PESTAÑA 2: FACTURAS Y COMPROMISOS
+                 ===================================================== -->
+            <section id="tab-bills" class="app-tab d-none">
+                
+                <!-- Tarjeta Superior: Liquidar Todas en Fecha de Cobro -->
+                <div class="vp-card p-3 mb-3 border-success border-opacity-25" style="background: linear-gradient(135deg, rgba(5, 150, 105, 0.16) 0%, #1e293b 100%);">
+                    <div class="d-flex align-items-start gap-2 mb-2">
+                        <div class="rounded-3 bg-success bg-opacity-25 p-2 text-success">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold text-white mb-1 small">Pago en Fecha de Cobro (Día <span id="billPaydayLabel">25</span>)</h6>
+                            <p class="text-secondary mb-0" style="font-size: 0.74rem;">
+                                Liquida todas tus facturas pendientes de una vez. Se descuentan del Disponible Neto sin afectar tu límite diario.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top border-light border-opacity-10">
+                        <div>
+                            <small class="text-secondary d-block" style="font-size: 0.68rem;">Pendiente por Pagar</small>
+                            <span class="fw-bold text-warning" id="displayPendingBillsTotal">₲ 0</span>
+                        </div>
+                        <button type="button" class="btn btn-emerald btn-sm fw-bold rounded-3 px-3 py-2" onclick="payAllBills()">
+                            <i class="fa-solid fa-check-double me-1"></i> Pagar Todas
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Formulario Nueva Factura -->
+                <div class="vp-card p-3 mb-3">
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-file-invoice-dollar me-1 text-warning"></i>Agregar Factura o Compromiso</h6>
+                    <form id="billForm" onsubmit="handleAddBill(event)">
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small text-secondary mb-1">Servicio / Concepto</label>
+                                <input type="text" id="billName" class="form-control form-control-sm" placeholder="Ej: ANDE, ESSAP, Internet" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-secondary mb-1">Monto (₲)</label>
+                                <input type="text" inputmode="numeric" id="billAmount" class="form-control form-control-sm fw-bold" placeholder="Ej: 180.000" oninput="formatCurrencyInput(this)" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary mb-1">Fecha Exacta de Vencimiento</label>
+                            <input type="date" id="billDueDate" class="form-control form-control-sm" required>
+                        </div>
+                        <button type="submit" class="btn btn-warning text-dark w-100 fw-bold rounded-3 py-2">
+                            <i class="fa-solid fa-plus me-1"></i> Guardar Factura
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Listado de Facturas -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-0">Listado de Facturas</h6>
+                    <small class="text-secondary" style="font-size: 0.7rem;">Alerta ≤ 5 días</small>
+                </div>
+                <div id="billsListContainer" class="d-flex flex-column gap-2"></div>
+            </section>
+
+            <!-- =====================================================
+                 PESTAÑA 3: REPORTES Y EXPORTACIÓN EXCEL
+                 ===================================================== -->
+            <section id="tab-reports" class="app-tab d-none">
+                
+                <!-- Tarjeta Exportar Reporte Excel (.xlsx) -->
+                <div class="vp-card p-3 mb-3 border-success border-opacity-25">
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <div>
+                            <h6 class="fw-bold text-white mb-1 small"><i class="fa-solid fa-file-excel text-success me-1"></i>Descargar Reporte Excel (.xlsx)</h6>
+                            <p class="text-secondary mb-0" style="font-size: 0.72rem;">Genera libro con 3 hojas: Resumen, Facturas e Historial de Gastos.</p>
+                        </div>
+                        <button type="button" class="btn btn-emerald btn-sm fw-bold rounded-3 px-3 py-2 text-nowrap" onclick="exportExcelReport()">
+                            <i class="fa-solid fa-download me-1"></i> Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Gráfico Circular (Chart.js) -->
+                <div class="vp-card p-3 mb-3">
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-chart-pie me-1 text-info"></i>Gastos por Categoría</h6>
+                    <div style="position: relative; height: 240px; width: 100%;">
+                        <canvas id="categoryDoughnutChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Desglose por Categoría -->
+                <div class="vp-card p-3">
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-2">Resumen por Categoría</h6>
+                    <div id="categoryBreakdownList" class="d-flex flex-column gap-1"></div>
+                </div>
+            </section>
+
+            <!-- =====================================================
+                 PESTAÑA 4: AJUSTES, RESPALDO Y CRÉDITOS
+                 ===================================================== -->
+            <section id="tab-settings" class="app-tab d-none">
+                
+                <!-- Configuración de Usuario, Presupuesto y Contraseña -->
+                <div class="vp-card p-3 mb-3">
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-user-gear me-1 text-success"></i>Perfil, Ciclo y Seguridad</h6>
+                    <form id="settingsForm" onsubmit="handleSaveSettings(event)">
+                        <div class="mb-2">
+                            <label class="form-label small text-secondary mb-1">Nombre de Usuario</label>
+                            <input type="text" id="cfgUserName" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-7">
+                                <label class="form-label small text-secondary mb-1">Sueldo Base (₲)</label>
+                                <input type="text" inputmode="numeric" id="cfgSalary" class="form-control form-control-sm fw-bold" oninput="formatCurrencyInput(this)" required>
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label small text-secondary mb-1">Día de Cobro (1-31)</label>
+                                <input type="number" min="1" max="31" id="cfgPayday" class="form-control form-control-sm fw-bold" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary mb-1">Contraseña o PIN de Acceso</label>
+                            <div class="input-group input-group-sm">
+                                <input type="password" id="cfgPassword" class="form-control fw-bold" placeholder="Dejar vacío para desactivar bloqueo">
+                                <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('cfgPassword', this)" title="Mostrar / Ocultar">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                            <small class="text-secondary" style="font-size: 0.68rem;">Soporta números o letras. Déjalo en blanco si no deseas bloqueo.</small>
+                        </div>
+                        <button type="submit" class="btn btn-emerald w-100 fw-bold rounded-3 py-2">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Configuración
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Gestión de Categorías Personalizadas -->
+                <div class="vp-card p-3 mb-3">
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-2"><i class="fa-solid fa-tags me-1 text-info"></i>Categorías Personalizadas</h6>
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="text" id="newCategoryName" class="form-control" placeholder="Nueva categoría (ej: Gimnasio, Mascotas)">
+                        <button type="button" class="btn btn-outline-success fw-bold" onclick="handleAddCategory()">Agregar</button>
+                    </div>
+                    <div id="customCategoriesContainer" class="d-flex flex-wrap gap-1 mt-2"></div>
+                </div>
+
+                <!-- Copia de Seguridad (.JSON) -->
+                <div class="vp-card p-3 mb-3">
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-2"><i class="fa-solid fa-shield-halved me-1 text-warning"></i>Copia de Seguridad (Backup)</h6>
+                    <p class="text-secondary mb-2" style="font-size: 0.74rem;">
+                        Exporta tus datos para guardarlos en Google Drive o WhatsApp y restaurarlos si cambias de teléfono.
+                    </p>
+                    <button type="button" class="btn btn-outline-info btn-sm w-100 fw-bold rounded-3 py-2 mb-3" onclick="exportBackupJson()">
+                        <i class="fa-solid fa-cloud-arrow-down me-1"></i> Exportar Respaldo (.JSON)
+                    </button>
+
+                    <label class="form-label small text-secondary mb-1">Restaurar desde archivo .json:</label>
+                    <input type="file" id="importJsonFile" class="form-control form-control-sm" accept=".json" onchange="importBackupJson(event)">
+                </div>
+
+                <!-- Tarjeta Destacada: Acerca de ViruPy (Créditos de Autoría) -->
+                <div class="vp-card p-4 text-center border-success border-opacity-25" style="background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-success bg-opacity-25 text-success mb-2" style="width: 46px; height: 46px;">
+                        <i class="fa-solid fa-code fs-5"></i>
+                    </div>
+                    <h6 class="fw-bold text-white mb-1">Acerca de ViruPy</h6>
+                    <p class="small text-light mb-1">
+                        <strong>ViruPy v1.0</strong> • Creado y diseñado por <strong class="text-success">Cesar Borja</strong>
+                    </p>
+                    <small class="text-secondary d-block" style="font-size: 0.72rem;">
+                        Paraguay • Todos los derechos reservados © 2026
+                    </small>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Barra de Navegación Inferior Nativa (4 Pestañas) -->
+        <nav class="bottom-nav">
+            <button type="button" class="nav-tab-btn active" id="nav-home" onclick="switchTab('home')">
+                <i class="fa-solid fa-house"></i>
+                <span>Inicio</span>
+            </button>
+            <button type="button" class="nav-tab-btn position-relative" id="nav-bills" onclick="switchTab('bills')">
+                <i class="fa-solid fa-file-invoice-dollar"></i>
+                <span>Facturas</span>
+                <span id="navBillsAlertDot" class="position-absolute top-0 start-75 translate-middle badge rounded-pill bg-warning text-dark d-none" style="font-size: 0.6rem;">!</span>
+            </button>
+            <button type="button" class="nav-tab-btn" id="nav-reports" onclick="switchTab('reports')">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Reportes</span>
+            </button>
+            <button type="button" class="nav-tab-btn" id="nav-settings" onclick="switchTab('settings')">
+                <i class="fa-solid fa-gear"></i>
+                <span>Ajustes</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Toast de Mensajes -->
+    <div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3">
+        <div id="appToast" class="toast align-items-center text-bg-success border-0 rounded-4 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body small fw-semibold" id="appToastText">Listo</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // =========================================================
+        // 1. ESTADO INICIAL Y PERSISTENCIA LOCAL (LOCALSTORAGE)
+        // =========================================================
+        const STORAGE_KEY = 'virupy_cesarborja_v1';
+
+        function getTodayISO() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function getOffsetDateISO(days) {
+            const d = new Date();
+            d.setDate(d.getDate() + days);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        let state = {
+            userName: "Usuario",
+            password: "1234",
+            salary: 6000000,
+            payday: 25,
+            categories: ["Comida", "Transporte", "Supermercado", "Ocio", "Salud", "Varios"],
+            expenses: [
+                { id: 1, amount: 35000, category: "Comida", desc: "Almuerzo del día", date: getTodayISO() }
+            ],
+            bills: [
+                { id: 101, name: "ANDE (Electricidad)", amount: 240000, dueDate: getOffsetDateISO(3), paid: false },
+                { id: 102, name: "Internet Fibra", amount: 165000, dueDate: getOffsetDateISO(12), paid: false }
+            ]
+        };
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    state = { ...state, ...parsed };
+                }
+            } catch (e) {
+                console.error("Error leyendo almacenamiento local:", e);
+            }
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (e) {
+                console.error("Error guardando almacenamiento local:", e);
+            }
+            renderAll();
+        }
+
+        // =========================================================
+        // 2. FORMATEO EN GUARANÍES (₲) CON SEPARADORES DE PUNTOS
+        // =========================================================
+        function formatPYG(val) {
+            const num = Math.round(Number(val) || 0);
+            const formatted = Math.abs(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            return (num < 0 ? "-₲ " : "₲ ") + formatted;
+        }
+
+        function formatDots(val) {
+            const num = Math.round(Number(val) || 0);
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        function parsePYG(str) {
+            if (typeof val === 'number') return str;
+            if (!str) return 0;
+            const clean = str.toString().replace(/\D/g, '');
+            return clean ? parseInt(clean, 10) : 0;
+        }
+
+        function formatCurrencyInput(input) {
+            const digits = input.value.replace(/\D/g, '');
+            input.value = digits ? formatDots(parseInt(digits, 10)) : '';
+        }
+
+        function notify(msg, isError = false) {
+            const toastEl = document.getElementById('appToast');
+            const toastText = document.getElementById('appToastText');
+            toastEl.className = `toast align-items-center text-bg-${isError ? 'danger' : 'success'} border-0 rounded-4 shadow-lg`;
+            toastText.textContent = msg;
+            new bootstrap.Toast(toastEl, { delay: 2400 }).show();
+        }
+
+        function escapeHTML(str) {
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        // =========================================================
+        // 3. SEGURIDAD Y BLOQUEO CON CONTRASEÑA / PIN
+        // =========================================================
+        function togglePasswordVisibility(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        function handleUnlockSubmit(e) {
+            e.preventDefault();
+            const entered = document.getElementById('lockPasswordInput').value;
+            const errEl = document.getElementById('lockErrorMsg');
+            if (entered === state.password) {
+                document.getElementById('lockScreen').style.display = 'none';
+                document.getElementById('lockPasswordInput').value = '';
+                errEl.classList.add('d-none');
+            } else {
+                errEl.classList.remove('d-none');
+            }
+        }
+
+        function lockApp() {
+            if (!state.password || state.password.trim() === '') {
+                notify("Configura una contraseña o PIN en Ajustes primero", true);
+                switchTab('settings');
+                return;
+            }
+            document.getElementById('lockWelcomeUser').textContent = `Hola, ${state.userName} • Acceso Protegido`;
+            document.getElementById('lockPasswordInput').value = '';
+            document.getElementById('lockErrorMsg').classList.add('d-none');
+            document.getElementById('lockScreen').style.display = 'flex';
+        }
+
+        // =========================================================
+        // 4. LÓGICA FINANCIERA: CICLO DE 30 DÍAS Y SEMÁFORO DIARIO
+        // =========================================================
+        function getCycleInfo() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            const day = today.getDate();
+
+            let cycleStart = new Date(year, month, state.payday);
+            if (day < state.payday) {
+                cycleStart = new Date(year, month - 1, state.payday);
+            }
+            cycleStart.setHours(0, 0, 0, 0);
+
+            const cycleEnd = new Date(cycleStart);
+            cycleEnd.setDate(cycleEnd.getDate() + 30);
+
+            const msPerDay = 1000 * 60 * 60 * 24;
+            let daysLeft = Math.ceil((cycleEnd - today) / msPerDay);
+            if (daysLeft < 1) daysLeft = 1;
+            if (daysLeft > 30) daysLeft = 30;
+
+            return { cycleStart, cycleEnd, daysLeft };
+        }
+
+        function isDateInCurrentCycle(dateStr, cycleStart, cycleEnd) {
+            const d = new Date(dateStr + 'T00:00:00');
+            return d >= cycleStart && d <= cycleEnd;
+        }
+
+        function renderAll() {
+            const { cycleStart, cycleEnd, daysLeft } = getCycleInfo();
+            const todayISO = getTodayISO();
+
+            // Encabezados
+            document.getElementById('headerSubtitle').textContent = `Hola, ${state.userName} • Cobro día ${state.payday}`;
+            document.getElementById('lockWelcomeUser').textContent = `Hola, ${state.userName} • Acceso Protegido`;
+            document.getElementById('billPaydayLabel').textContent = state.payday;
+            document.getElementById('badgeDaysLeft').textContent = `${daysLeft} días rest.`;
+
+            // Mostrar u ocultar botón de bloqueo rápido según si hay contraseña activa
+            const lockBtn = document.getElementById('btnHeaderLock');
+            if (state.password && state.password.trim() !== '') {
+                lockBtn.classList.remove('d-none');
+            } else {
+                lockBtn.classList.add('d-none');
+            }
+
+            // Cálculos del Ciclo
+            const paidBillsTotal = state.bills
+                .filter(b => b.paid)
+                .reduce((sum, b) => sum + b.amount, 0);
+
+            const cycleExpenses = state.expenses.filter(e => isDateInCurrentCycle(e.date, cycleStart, cycleEnd));
+            const cycleExpensesTotal = cycleExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+            const todaySpent = state.expenses
+                .filter(e => e.date === todayISO)
+                .reduce((sum, e) => sum + e.amount, 0);
+
+            // Disponible Neto = Sueldo Base - Facturas Pagadas - Gastos Cotidianos del Ciclo
+            const netBalance = state.salary - paidBillsTotal - cycleExpensesTotal;
+
+            // Límite Diario Sugerido basado en disponible al inicio de hoy / días restantes
+            const availableStartToday = netBalance + todaySpent;
+            const dailyLimit = availableStartToday > 0 ? Math.floor(availableStartToday / daysLeft) : 0;
+
+            // Actualizar Tarjeta Principal
+            document.getElementById('displayNetBalance').textContent = formatPYG(netBalance);
+            document.getElementById('displayBaseSalary').textContent = formatPYG(state.salary);
+            document.getElementById('displayPaidBills').textContent = formatPYG(paidBillsTotal);
+            document.getElementById('displayCycleExpenses').textContent = formatPYG(cycleExpensesTotal);
+
+            // Actualizar Semáforo Diario (evalúa únicamente gastos cotidianos de hoy)
+            document.getElementById('displayDailyLimit').textContent = formatPYG(dailyLimit);
+            document.getElementById('displayTodaySpent').textContent = formatPYG(todaySpent);
+
+            const progressBar = document.getElementById('dailyProgressBar');
+            const statusBadge = document.getElementById('dailyStatusBadge');
+            const percentLabel = document.getElementById('dailyPercentLabel');
+            const limitText = document.getElementById('displayDailyLimit');
+
+            const pct = dailyLimit > 0 ? Math.round((todaySpent / dailyLimit) * 100) : (todaySpent > 0 ? 100 : 0);
+            progressBar.style.width = `${Math.min(pct, 100)}%`;
+            percentLabel.textContent = `${pct}% usado hoy`;
+
+            if (todaySpent === 0 || pct <= 80) {
+                progressBar.className = "progress-bar bg-success";
+                statusBadge.className = "badge rounded-pill bg-success";
+                statusBadge.textContent = "Dentro del límite";
+                limitText.className = "fw-bold text-success mb-0";
+            } else if (pct <= 100) {
+                progressBar.className = "progress-bar bg-warning";
+                statusBadge.className = "badge rounded-pill bg-warning text-dark";
+                statusBadge.textContent = "Precaución (>80%)";
+                limitText.className = "fw-bold text-warning mb-0";
+            } else {
+                progressBar.className = "progress-bar bg-danger";
+                statusBadge.className = "badge rounded-pill bg-danger";
+                statusBadge.textContent = "Límite superado";
+                limitText.className = "fw-bold text-danger mb-0";
+            }
+
+            renderCategorySelect();
+            renderRecentExpenses();
+            renderBills();
+            renderReports();
+            populateSettingsForm();
+        }
+
+        // =========================================================
+        // 5. GASTOS COTIDIANOS Y BILLETES RÁPIDOS
+        // =========================================================
+        function renderCategorySelect() {
+            const select = document.getElementById('expCategory');
+            const current = select.value;
+            select.innerHTML = '';
+            state.categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                select.appendChild(opt);
+            });
+            if (state.categories.includes(current)) {
+                select.value = current;
+            }
+        }
+
+        function quickAddBanknote(amount) {
+            const cat = state.categories.includes("Comida") ? "Comida" : state.categories[0];
+            state.expenses.unshift({
+                id: Date.now(),
+                amount: amount,
+                category: cat,
+                desc: `Billete rápido (${formatPYG(amount)})`,
+                date: getTodayISO()
+            });
+            saveState();
+            notify(`Gasto de ${formatPYG(amount)} registrado`);
+        }
+
+        function handleAddExpense(e) {
+            e.preventDefault();
+            const amount = parsePYG(document.getElementById('expAmount').value);
+            const category = document.getElementById('expCategory').value;
+            const desc = document.getElementById('expDesc').value.trim();
+            const date = document.getElementById('expDate').value;
+
+            if (amount <= 0 || !desc || !date) {
+                notify("Ingresa un monto válido y una descripción", true);
+                return;
+            }
+
+            state.expenses.unshift({
+                id: Date.now(),
+                amount,
+                category,
+                desc,
+                date
+            });
+
+            document.getElementById('expAmount').value = '';
+            document.getElementById('expDesc').value = '';
+            document.getElementById('expDate').value = getTodayISO();
+
+            saveState();
+            notify("Gasto registrado");
+        }
+
+        function deleteExpense(id) {
+            state.expenses = state.expenses.filter(item => item.id !== id);
+            saveState();
+            notify("Gasto eliminado");
+        }
+
+        function renderRecentExpenses() {
+            const list = document.getElementById('recentExpensesList');
+            document.getElementById('expensesCountBadge').textContent = state.expenses.length;
+            list.innerHTML = '';
+
+            if (state.expenses.length === 0) {
+                list.innerHTML = `<div class="vp-card p-3 text-center text-secondary small">Aún no registraste gastos cotidianos.</div>`;
+                return;
+            }
+
+            state.expenses.forEach(exp => {
+                const dateFmt = exp.date.split('-').reverse().join('/');
+                const div = document.createElement('div');
+                div.className = "vp-card p-3 d-flex justify-content-between align-items-center";
+                div.innerHTML = `
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-3 bg-dark border border-secondary border-opacity-25 d-flex align-items-center justify-content-center text-success" style="width: 38px; height: 38px;">
+                            <i class="fa-solid fa-receipt"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-white small">${escapeHTML(exp.desc)}</div>
+                            <small class="text-secondary" style="font-size: 0.7rem;">
+                                <span class="badge bg-secondary bg-opacity-25 text-light me-1">${escapeHTML(exp.category)}</span>${dateFmt}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-bold text-danger small">- ${formatPYG(exp.amount)}</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0 px-2 py-1" onclick="deleteExpense(${exp.id})" title="Eliminar">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // =========================================================
+        // 6. FACTURAS Y ALERTAS DE VENCIMIENTO (<= 5 DÍAS)
+        // =========================================================
+        function handleAddBill(e) {
+            e.preventDefault();
+            const name = document.getElementById('billName').value.trim();
+            const amount = parsePYG(document.getElementById('billAmount').value);
+            const dueDate = document.getElementById('billDueDate').value;
+
+            if (!name || amount <= 0 || !dueDate) {
+                notify("Completa los datos de la factura", true);
+                return;
+            }
+
+            state.bills.push({
+                id: Date.now(),
+                name,
+                amount,
+                dueDate,
+                paid: false
+            });
+
+            document.getElementById('billName').value = '';
+            document.getElementById('billAmount').value = '';
+            document.getElementById('billDueDate').value = '';
+
+            saveState();
+            notify("Factura agregada");
+        }
+
+        function toggleBillPaid(id) {
+            const bill = state.bills.find(b => b.id === id);
+            if (!bill) return;
+            bill.paid = !bill.paid;
+            saveState();
+            notify(bill.paid ? `Factura "${bill.name}" pagada` : `Factura "${bill.name}" marcada pendiente`);
+        }
+
+        function payAllBills() {
+            const pending = state.bills.filter(b => !b.paid);
+            if (pending.length === 0) {
+                notify("No hay facturas pendientes por pagar");
+                return;
+            }
+            state.bills.forEach(b => b.paid = true);
+            saveState();
+            notify(`¡${pending.length} factura(s) pagada(s) del Disponible Neto!`);
+        }
+
+        function deleteBill(id) {
+            state.bills = state.bills.filter(b => b.id !== id);
+            saveState();
+            notify("Factura eliminada");
+        }
+
+        function renderBills() {
+            const container = document.getElementById('billsListContainer');
+            const banner = document.getElementById('globalBillBanner');
+            const bannerText = document.getElementById('globalBillBannerText');
+            const navDot = document.getElementById('navBillsAlertDot');
+
+            container.innerHTML = '';
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let pendingTotal = 0;
+            let alertCount = 0;
+
+            if (state.bills.length === 0) {
+                container.innerHTML = `<div class="vp-card p-3 text-center text-secondary small">No tienes facturas cargadas este mes.</div>`;
+            }
+
+            const sorted = [...state.bills].sort((a, b) => {
+                if (a.paid !== b.paid) return a.paid ? 1 : -1;
+                return a.dueDate.localeCompare(b.dueDate);
+            });
+
+            sorted.forEach(bill => {
+                if (!bill.paid) pendingTotal += bill.amount;
+
+                const dueObj = new Date(bill.dueDate + 'T00:00:00');
+                const diffDays = Math.ceil((dueObj - today) / (1000 * 60 * 60 * 24));
+                const dueFmt = bill.dueDate.split('-').reverse().join('/');
+
+                let extraClass = "";
+                let badgeHtml = `<span class="badge bg-secondary bg-opacity-25 text-light">Vence: ${dueFmt}</span>`;
+
+                if (bill.paid) {
+                    badgeHtml = `<span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25"><i class="fa-solid fa-check me-1"></i>Pagada (${dueFmt})</span>`;
+                } else if (diffDays < 0) {
+                    extraClass = "bill-overdue";
+                    alertCount++;
+                    badgeHtml = `<span class="badge bg-danger text-white"><i class="fa-solid fa-circle-exclamation me-1"></i>Vencida hace ${Math.abs(diffDays)} día(s) • ${dueFmt}</span>`;
+                } else if (diffDays <= 5) {
+                    extraClass = "bill-near-due";
+                    alertCount++;
+                    const label = diffDays === 0 ? "¡Vence HOY!" : `Vence en ${diffDays} día(s)`;
+                    badgeHtml = `<span class="badge bg-warning text-dark fw-bold"><i class="fa-solid fa-clock me-1"></i>${label} • ${dueFmt}</span>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = `vp-card p-3 ${extraClass}`;
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <div class="fw-bold text-white ${bill.paid ? 'text-decoration-line-through opacity-50' : ''}">${escapeHTML(bill.name)}</div>
+                            <div class="mt-1">${badgeHtml}</div>
+                        </div>
+                        <span class="fw-bold ${bill.paid ? 'text-secondary' : 'text-warning'}">${formatPYG(bill.amount)}</span>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 pt-2 border-top border-light border-opacity-10">
+                        <button type="button" class="btn btn-sm ${bill.paid ? 'btn-outline-secondary' : 'btn-emerald fw-bold'} rounded-3 px-3" onclick="toggleBillPaid(${bill.id})">
+                            ${bill.paid ? '<i class="fa-solid fa-rotate-left me-1"></i>Pendiente' : '<i class="fa-solid fa-check me-1"></i>Pagar'}
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-3" onclick="deleteBill(${bill.id})" title="Eliminar">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('displayPendingBillsTotal').textContent = formatPYG(pendingTotal);
+
+            if (alertCount > 0) {
+                banner.classList.remove('d-none');
+                banner.classList.add('d-flex');
+                bannerText.textContent = `Tienes ${alertCount} factura(s) vencida(s) o por vencer en ≤ 5 días.`;
+                navDot.classList.remove('d-none');
+                navDot.textContent = alertCount;
+            } else {
+                banner.classList.add('d-none');
+                banner.classList.remove('d-flex');
+                navDot.classList.add('d-none');
+            }
+        }
+
+        // =========================================================
+        // 7. REPORTES (CHART.JS) Y EXCEL (.XLSX) DE 3 HOJAS
+        // =========================================================
+        let chartInstance = null;
+
+        function renderReports() {
+            const totals = {};
+            state.expenses.forEach(e => {
+                totals[e.category] = (totals[e.category] || 0) + e.amount;
+            });
+
+            const labels = Object.keys(totals);
+            const values = Object.values(totals);
+            const breakdown = document.getElementById('categoryBreakdownList');
+            breakdown.innerHTML = '';
+
+            if (labels.length === 0) {
+                breakdown.innerHTML = `<div class="text-secondary small text-center py-2">Sin gastos registrados para analizar.</div>`;
+            } else {
+                const grandTotal = values.reduce((a, b) => a + b, 0);
+                labels.forEach((cat, i) => {
+                    const pct = grandTotal > 0 ? Math.round((values[i] / grandTotal) * 100) : 0;
+                    const row = document.createElement('div');
+                    row.className = "d-flex justify-content-between align-items-center py-2 border-bottom border-light border-opacity-10";
+                    row.innerHTML = `
+                        <div>
+                            <span class="fw-semibold text-white small">${escapeHTML(cat)}</span>
+                            <span class="badge bg-secondary bg-opacity-25 text-secondary ms-1">${pct}%</span>
+                        </div>
+                        <span class="fw-bold text-success small">${formatPYG(values[i])}</span>
+                    `;
+                    breakdown.appendChild(row);
+                });
+            }
+
+            const ctx = document.getElementById('categoryDoughnutChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels.length ? labels : ['Sin datos'],
+                    datasets: [{
+                        data: values.length ? values : [1],
+                        backgroundColor: labels.length
+                            ? ['#059669', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444']
+                            : ['#334155'],
+                        borderColor: '#1e293b',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#cbd5e1', font: { family: 'Inter', size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function exportExcelReport() {
+            const { daysLeft } = getCycleInfo();
+            const paidBills = state.bills.filter(b => b.paid).reduce((s, b) => s + b.amount, 0);
+            const pendingBills = state.bills.filter(b => !b.paid).reduce((s, b) => s + b.amount, 0);
+            const totalExpenses = state.expenses.reduce((s, e) => s + e.amount, 0);
+            const netBalance = state.salary - paidBills - totalExpenses;
+            const dailyLimit = netBalance > 0 ? Math.floor(netBalance / daysLeft) : 0;
+
+            // Hoja 1: Resumen Financiero
+            const resumenSheetData = [
+                { Concepto: "Aplicación", Valor: "ViruPy - Control Financiero (PYG)" },
+                { Concepto: "Usuario", Valor: state.userName },
+                { Concepto: "Fecha del Reporte", Valor: getTodayISO() },
+                { Concepto: "Día de Cobro Configurado", Valor: `Día ${state.payday}` },
+                { Concepto: "Días Restantes del Ciclo", Valor: daysLeft },
+                { Concepto: "Sueldo Base Mensual (₲)", Valor: state.salary },
+                { Concepto: "Facturas Pagadas (₲)", Valor: paidBills },
+                { Concepto: "Facturas Pendientes (₲)", Valor: pendingBills },
+                { Concepto: "Total Gastos Cotidianos (₲)", Valor: totalExpenses },
+                { Concepto: "Disponible Neto (₲)", Valor: netBalance },
+                { Concepto: "Límite Diario Sugerido (₲)", Valor: dailyLimit },
+                { Concepto: "", Valor: "" },
+                { Concepto: "Créditos", Valor: "Generado con ViruPy — Desarrollado por Cesar Borja" }
+            ];
+
+            // Hoja 2: Facturas y Compromisos
+            const facturasSheetData = state.bills.map(b => ({
+                "Servicio / Factura": b.name,
+                "Monto (₲)": b.amount,
+                "Fecha de Vencimiento": b.dueDate,
+                "Estado": b.paid ? "Pagada" : "Pendiente"
+            }));
+            if (facturasSheetData.length === 0) {
+                facturasSheetData.push({ "Servicio / Factura": "Sin registros", "Monto (₲)": 0, "Fecha de Vencimiento": "-", "Estado": "-" });
+            }
+
+            // Hoja 3: Historial de Gastos
+            const gastosSheetData = state.expenses.map(e => ({
+                "Fecha": e.date,
+                "Descripción": e.desc,
+                "Categoría": e.category,
+                "Monto (₲)": e.amount
+            }));
+            if (gastosSheetData.length === 0) {
+                gastosSheetData.push({ "Fecha": "-", "Descripción": "Sin registros", "Categoría": "-", "Monto (₲)": 0 });
+            }
+
+            const wb = XLSX.utils.book_new();
+            const wsResumen = XLSX.utils.json_to_sheet(resumenSheetData);
+            const wsFacturas = XLSX.utils.json_to_sheet(facturasSheetData);
+            const wsGastos = XLSX.utils.json_to_sheet(gastosSheetData);
+
+            wsResumen['!cols'] = [{ wch: 30 }, { wch: 48 }];
+            wsFacturas['!cols'] = [{ wch: 28 }, { wch: 18 }, { wch: 22 }, { wch: 16 }];
+            wsGastos['!cols'] = [{ wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 18 }];
+
+            XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen Financiero");
+            XLSX.utils.book_append_sheet(wb, wsFacturas, "Facturas y Compromisos");
+            XLSX.utils.book_append_sheet(wb, wsGastos, "Historial de Gastos");
+
+            XLSX.writeFile(wb, `ViruPy_Reporte_${getTodayISO()}.xlsx`);
+            notify("Reporte Excel (.xlsx) descargado");
+        }
+
+        // =========================================================
+        // 8. AJUSTES, CATEGORÍAS Y COPIA DE SEGURIDAD (.JSON)
+        // =========================================================
+        function populateSettingsForm() {
+            document.getElementById('cfgUserName').value = state.userName;
+            document.getElementById('cfgSalary').value = formatDots(state.salary);
+            document.getElementById('cfgPayday').value = state.payday;
+            document.getElementById('cfgPassword').value = state.password || '';
+
+            const container = document.getElementById('customCategoriesContainer');
+            container.innerHTML = '';
+            state.categories.forEach(cat => {
+                const chip = document.createElement('span');
+                chip.className = "badge bg-secondary bg-opacity-25 text-light border border-secondary d-inline-flex align-items-center gap-1 py-1 px-2";
+                chip.innerHTML = `
+                    ${escapeHTML(cat)}
+                    <i class="fa-solid fa-xmark text-danger ms-1" style="cursor:pointer;" onclick="handleDeleteCategory('${escapeHTML(cat)}')"></i>
+                `;
+                container.appendChild(chip);
+            });
+        }
+
+        function handleSaveSettings(e) {
+            e.preventDefault();
+            const newName = document.getElementById('cfgUserName').value.trim();
+            const newSalary = parsePYG(document.getElementById('cfgSalary').value);
+            const newPayday = parseInt(document.getElementById('cfgPayday').value, 10);
+            const newPassword = document.getElementById('cfgPassword').value.trim();
+
+            if (newPayday < 1 || newPayday > 31) {
+                notify("El día de cobro debe estar entre 1 y 31", true);
+                return;
+            }
+
+            state.userName = newName || "Usuario";
+            state.salary = newSalary;
+            state.payday = newPayday;
+            state.password = newPassword; // Vacío desactiva el bloqueo
+
+            saveState();
+            notify(newPassword ? "Configuración y contraseña guardadas" : "Configuración guardada (bloqueo desactivado)");
+        }
+
+        function handleAddCategory() {
+            const input = document.getElementById('newCategoryName');
+            const name = input.value.trim();
+            if (!name) return;
+            if (!state.categories.includes(name)) {
+                state.categories.push(name);
+                input.value = '';
+                saveState();
+                notify(`Categoría "${name}" agregada`);
+            } else {
+                notify("Esa categoría ya existe", true);
+            }
+        }
+
+        function handleDeleteCategory(catName) {
+            if (state.categories.length <= 1) {
+                notify("Debe quedar al menos una categoría", true);
+                return;
+            }
+            state.categories = state.categories.filter(c => c !== catName);
+            saveState();
+            notify("Categoría eliminada");
+        }
+
+        function exportBackupJson() {
+            const jsonStr = JSON.stringify(state, null, 2);
+            const blob = new Blob([jsonStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `virupy_backup_${getTodayISO()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            notify("Copia de seguridad descargada");
+        }
+
+        function importBackupJson(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data && typeof data === 'object' && Array.isArray(data.expenses) && Array.isArray(data.bills)) {
+                        state = { ...state, ...data };
+                        saveState();
+                        notify("¡Datos e historial restaurados con éxito!");
+                    } else {
+                        notify("El archivo no es un respaldo válido de ViruPy", true);
+                    }
+                } catch (err) {
+                    notify("Error al leer el archivo de respaldo", true);
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // =========================================================
+        // 9. NAVEGACIÓN ENTRE PESTAÑAS E INICIALIZACIÓN
+        // =========================================================
+        function switchTab(tabName) {
+            document.querySelectorAll('.app-tab').forEach(el => el.classList.add('d-none'));
+            document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            document.getElementById(`tab-${tabName}`).classList.remove('d-none');
+            document.getElementById(`nav-${tabName}`).classList.add('active');
+
+            if (tabName === 'reports') {
+                renderReports();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            document.getElementById('expDate').value = getTodayISO();
+            renderAll();
+
+            // Mostrar pantalla de bloqueo solo si el usuario tiene contraseña/PIN configurado
+            if (state.password && state.password.trim() !== '') {
+                document.getElementById('lockScreen').style.display = 'flex';
+            }
+        });
+
+        // Registro seguro del Service Worker para funcionamiento PWA offline
+        if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.protocol === 'http:')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {
+                    // Silencioso en entornos sin sw.js externo
+                });
+            });
+        }
+    </script>
+</body>
+</html>
