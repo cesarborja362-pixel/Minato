@@ -644,16 +644,11 @@
         let state = {
             userName: "Usuario",
             password: "1234",
-            salary: 6000000,
+            salary: 0,
             payday: 25,
             categories: ["Comida", "Transporte", "Supermercado", "Ocio", "Salud", "Varios"],
-            expenses: [
-                { id: 1, amount: 35000, category: "Comida", desc: "Almuerzo del día", date: getTodayISO() }
-            ],
-            bills: [
-                { id: 101, name: "ANDE (Electricidad)", amount: 240000, dueDate: getOffsetDateISO(3), paid: false },
-                { id: 102, name: "Internet Fibra", amount: 165000, dueDate: getOffsetDateISO(12), paid: false }
-            ]
+            expenses: [],
+            bills: []
         };
 
         function loadState() {
