@@ -1,11 +1,12 @@
-const CACHE_NAME = 'virupy-cesarborja-v3';
+const CACHE_NAME = 'virupy-cesarborja-v4';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './icon-maskable-512.png'
+  './icon-maskable-512.png',
+  './apple-touch-icon.png'
 ];
 
 self.addEventListener('install', (e) => {
@@ -22,9 +23,9 @@ self.addEventListener('activate', (e) => {
 });
 
 // Network-first: usa internet si hay; si no, lo guardado.
-// Guarda también Bootstrap, Chart.js, FontAwesome, etc. para que funcione offline.
+// No guarda el APK (es pesado) ni peticiones que no sean GET.
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') return;
+  if (e.request.method !== 'GET' || e.request.url.split('?')[0].endsWith('.apk')) return;
   e.respondWith(
     fetch(e.request)
       .then((res) => {
