@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#059669">
     <meta name="author" content="Cesar Borja">
-    <meta name="description" content="ViruPy - Control de sueldo, ciclo de 30 días y facturas en Guaraníes. Desarrollado por Cesar Borja.">
+    <meta name="description" content="ViruPy - Control de sueldo, ciclo mensual exacto, gastos fijos, ahorros y facturas en Guaraníes. Desarrollado por Cesar Borja.">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -68,7 +68,7 @@
             inset: 0;
             background: radial-gradient(circle at top, #1e293b 0%, #0f172a 60%, #090d16 100%);
             z-index: 9999;
-            display: flex;
+            display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
@@ -111,22 +111,11 @@
             box-shadow: 0 10px 25px rgba(5, 150, 105, 0.2);
         }
 
-        /* Botones Rápidos Billetes Guaraníes */
-        .banknote-btn {
-            background: rgba(5, 150, 105, 0.14);
-            border: 1px solid rgba(52, 211, 153, 0.35);
-            color: var(--emerald-light);
-            border-radius: 1rem;
-            font-weight: 700;
-            padding: 0.65rem 0.35rem;
-            transition: all 0.15s ease;
-        }
-
-        .banknote-btn:hover, .banknote-btn:active {
-            background-color: var(--emerald-primary);
-            border-color: var(--emerald-primary);
-            color: #ffffff;
-            transform: scale(0.97);
+        .savings-card {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 45%, var(--bg-card) 100%);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2);
         }
 
         /* Estados Visuales de Facturas */
@@ -140,7 +129,7 @@
             background: linear-gradient(90deg, rgba(239, 68, 68, 0.16) 0%, var(--bg-card) 100%);
         }
 
-        /* Barra de Navegación Inferior */
+        /* Barra de Navegación Inferior (5 pestañas) */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -154,14 +143,14 @@
             z-index: 1030;
             display: flex;
             justify-content: space-around;
-            padding: 0.45rem 0.25rem;
+            padding: 0.45rem 0.2rem;
         }
 
         .nav-tab-btn {
             background: transparent;
             border: none;
             color: var(--text-muted);
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 600;
             display: flex;
             flex-direction: column;
@@ -169,7 +158,7 @@
             justify-content: center;
             gap: 4px;
             flex: 1;
-            padding: 0.45rem 0.25rem;
+            padding: 0.45rem 0.15rem;
             border-radius: 1rem;
             transition: all 0.2s ease;
         }
@@ -180,7 +169,7 @@
         }
 
         .nav-tab-btn i {
-            font-size: 1.15rem;
+            font-size: 1.1rem;
         }
 
         /* Inputs y Botones */
@@ -210,6 +199,35 @@
             color: #ffffff;
         }
 
+        .modal-content {
+            background-color: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 1.5rem;
+        }
+
+        .accordion-item {
+            background-color: #0f172a;
+            border-color: rgba(255, 255, 255, 0.1);
+            color: #f8fafc;
+        }
+
+        .accordion-button {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background-color: rgba(5, 150, 105, 0.18);
+            color: var(--emerald-light);
+            box-shadow: none;
+        }
+
+        .accordion-button::after {
+            filter: invert(1);
+        }
+
         .toast-container {
             z-index: 1080;
         }
@@ -218,9 +236,9 @@
 <body>
 
     <!-- =========================================================
-         PANTALLA DE BLOQUEO Y SEGURIDAD (#lockScreen)
+         PANTALLA DE BLOQUEO Y RECUPERACIÓN (#lockScreen)
          ========================================================= -->
-    <div id="lockScreen" style="display: none;">
+    <div id="lockScreen">
         <div class="lock-card text-center">
             <div class="d-inline-flex align-items-center justify-content-center rounded-4 mb-3 shadow" style="width: 68px; height: 68px; background: linear-gradient(135deg, #059669, #047857);">
                 <i class="fa-solid fa-wallet text-white fs-2"></i>
@@ -228,7 +246,8 @@
             <h2 class="fw-bold text-white mb-1">ViruPy</h2>
             <p class="text-secondary small mb-3" id="lockWelcomeUser">Hola, Usuario • Acceso Protegido</p>
 
-            <form onsubmit="handleUnlockSubmit(event)">
+            <!-- Formulario Normal de Desbloqueo -->
+            <form id="unlockForm" onsubmit="handleUnlockSubmit(event)">
                 <div class="input-group mb-2">
                     <input type="password" id="lockPasswordInput" class="form-control form-control-lg text-center fw-bold" placeholder="Contraseña o PIN" autocomplete="current-password" required>
                     <button type="button" class="btn btn-outline-secondary rounded-end-3" onclick="togglePasswordVisibility('lockPasswordInput', this)" title="Mostrar / Ocultar">
@@ -241,7 +260,36 @@
                 <button type="submit" class="btn btn-emerald w-100 fw-bold rounded-3 py-2 mt-1">
                     <i class="fa-solid fa-unlock-keyhole me-1"></i> Desbloquear ViruPy
                 </button>
+                <div class="mt-3">
+                    <button type="button" class="btn btn-link btn-sm text-secondary text-decoration-none" onclick="openRecoveryMode()">
+                        <i class="fa-solid fa-key me-1"></i>¿Olvidaste tu contraseña o PIN?
+                    </button>
+                </div>
             </form>
+
+            <!-- Formulario de Recuperación por Pregunta Secreta -->
+            <form id="recoveryForm" class="d-none text-start" onsubmit="handleRecoverySubmit(event)">
+                <div class="alert alert-info bg-info bg-opacity-10 border-info border-opacity-25 text-info small py-2 px-3 rounded-3 mb-2">
+                    <i class="fa-solid fa-shield-cat me-1"></i>Responde tu pregunta de seguridad para restablecer el acceso.
+                </div>
+                <label class="form-label small text-warning fw-semibold mb-1" id="recoveryQuestionLabel">Pregunta de seguridad:</label>
+                <input type="text" id="recoveryAnswerInput" class="form-control form-control-sm mb-2" placeholder="Tu respuesta secreta" required>
+                
+                <label class="form-label small text-secondary mb-1">Nuevo PIN o Contraseña:</label>
+                <input type="text" id="recoveryNewPinInput" class="form-control form-control-sm mb-2 fw-bold" placeholder="Ej: 1234" required>
+                
+                <div id="recoveryErrorMsg" class="text-danger small fw-semibold mb-2 d-none">
+                    <i class="fa-solid fa-circle-exclamation me-1"></i>La respuesta no coincide.
+                </div>
+                
+                <div class="d-flex gap-2 mt-3">
+                    <button type="button" class="btn btn-outline-secondary btn-sm w-50 rounded-3" onclick="closeRecoveryMode()">Cancelar</button>
+                    <button type="submit" class="btn btn-emerald btn-sm w-50 fw-bold rounded-3">Restablecer</button>
+                </div>
+            </form>
+            <button type="button" id="recoveryResetBtn" class="btn btn-outline-danger btn-sm w-100 fw-bold rounded-3 mt-2 d-none" onclick="resetAllData()">
+                <i class="fa-solid fa-trash-can me-1"></i> Borrar todos los datos y empezar de cero
+            </button>
         </div>
 
         <!-- Firma discreta al pie de la pantalla de bloqueo -->
@@ -273,7 +321,12 @@
             </div>
 
             <div class="d-flex align-items-center gap-2">
-                <button type="button" id="btnHeaderLock" class="btn btn-sm btn-outline-warning rounded-3" onclick="lockApp()" title="Bloquear App">
+                <!-- Botón Guía Práctica -->
+                <button type="button" class="btn btn-sm btn-outline-info rounded-3" data-bs-toggle="modal" data-bs-target="#helpGuideModal" title="Guía Práctica de Uso">
+                    <i class="fa-solid fa-circle-question"></i>
+                </button>
+                <!-- Botón Bloqueo -->
+                <button type="button" id="btnHeaderLock" class="btn btn-sm btn-outline-warning rounded-3 d-none" onclick="lockApp()" title="Bloquear App">
                     <i class="fa-solid fa-lock"></i>
                 </button>
             </div>
@@ -292,30 +345,39 @@
             </div>
 
             <!-- =====================================================
-                 PESTAÑA 1: INICIO (RESUMEN, SEMÁFORO Y GASTOS)
+                 PESTAÑA 1: INICIO (PRESUPUESTO NETO, SEMÁFORO Y GASTOS)
                  ===================================================== -->
             <section id="tab-home" class="app-tab">
                 
-                <!-- Tarjeta Principal: Disponible Neto del Ciclo -->
+                <!-- Tarjeta Principal: Disponible Real del Ciclo -->
                 <div class="hero-card p-3 mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="text-uppercase text-light opacity-75 fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Disponible Neto del Ciclo</span>
+                        <span class="text-uppercase text-light opacity-75 fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Saldo Libre Disponible</span>
                         <span class="badge rounded-pill bg-dark bg-opacity-75 text-light border border-light border-opacity-25" id="badgeDaysLeft">30 días rest.</span>
                     </div>
-                    <h2 class="fw-extrabold text-white mb-3" id="displayNetBalance">₲ 0</h2>
+                    <h2 class="fw-extrabold text-white mb-2" id="displayAvailableBalance">₲ 0</h2>
+                    
+                    <div class="d-flex justify-content-between align-items-center bg-dark bg-opacity-40 rounded-3 px-2 py-1 mb-3">
+                        <small class="text-light opacity-75" style="font-size: 0.72rem;">Presupuesto Neto Mensual (Sueldo - Fijos):</small>
+                        <span class="fw-bold small" style="color: #34d399;" id="displayNetBudget">₲ 0</span>
+                    </div>
 
                     <div class="row g-2 pt-2 border-top border-light border-opacity-15 text-center">
-                        <div class="col-4 border-end border-light border-opacity-15">
-                            <small class="text-light opacity-75 d-block" style="font-size: 0.68rem;">Sueldo Base</small>
-                            <span class="fw-bold text-white small" id="displayBaseSalary">₲ 0</span>
+                        <div class="col-3 border-end border-light border-opacity-15">
+                            <small class="text-light opacity-75 d-block" style="font-size: 0.65rem;">Total Ingresos</small>
+                            <span class="fw-bold text-white" style="font-size: 0.75rem;" id="displayBaseSalary">₲ 0</span>
                         </div>
-                        <div class="col-4 border-end border-light border-opacity-15">
-                            <small class="text-light opacity-75 d-block" style="font-size: 0.68rem;">Facturas Pagadas</small>
-                            <span class="fw-bold text-warning small" id="displayPaidBills">₲ 0</span>
+                        <div class="col-3 border-end border-light border-opacity-15">
+                            <small class="text-light opacity-75 d-block" style="font-size: 0.65rem;">Gastos Fijos</small>
+                            <span class="fw-bold text-danger" style="font-size: 0.75rem;" id="displayFixedTotal">₲ 0</span>
                         </div>
-                        <div class="col-4">
-                            <small class="text-light opacity-75 d-block" style="font-size: 0.68rem;">Gastos Ciclo</small>
-                            <span class="fw-bold text-info small" id="displayCycleExpenses">₲ 0</span>
+                        <div class="col-3 border-end border-light border-opacity-15">
+                            <small class="text-light opacity-75 d-block" style="font-size: 0.65rem;">Facturas Pag.</small>
+                            <span class="fw-bold text-warning" style="font-size: 0.75rem;" id="displayPaidBills">₲ 0</span>
+                        </div>
+                        <div class="col-3">
+                            <small class="text-light opacity-75 d-block" style="font-size: 0.65rem;">Gastos Ciclo</small>
+                            <span class="fw-bold text-info" style="font-size: 0.75rem;" id="displayCycleExpenses">₲ 0</span>
                         </div>
                     </div>
                 </div>
@@ -342,36 +404,8 @@
                         <div id="dailyProgressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%; transition: width 0.35s ease;"></div>
                     </div>
                     <div class="d-flex justify-content-between mt-1">
-                        <small class="text-secondary" style="font-size: 0.68rem;">Facturas no afectan este límite</small>
+                        <small class="text-secondary" style="font-size: 0.68rem;">Calculado según días reales al próximo cobro</small>
                         <small class="text-secondary fw-semibold" style="font-size: 0.68rem;" id="dailyPercentLabel">0%</small>
-                    </div>
-                </div>
-
-                <!-- Registro Rápido de Billetes Paraguayos -->
-                <div class="vp-card p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-bold small text-uppercase text-secondary"><i class="fa-solid fa-money-bill-wave me-1 text-success"></i>Billetes Rápidos (1-Toque)</span>
-                        <small class="text-success" style="font-size: 0.7rem;">Ingreso directo</small>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-4">
-                            <button type="button" class="btn banknote-btn w-100" onclick="quickAddBanknote(20000)">
-                                <small class="d-block opacity-75" style="font-size: 0.65rem;">Guaraníes</small>
-                                + 20.000
-                            </button>
-                        </div>
-                        <div class="col-4">
-                            <button type="button" class="btn banknote-btn w-100" onclick="quickAddBanknote(50000)">
-                                <small class="d-block opacity-75" style="font-size: 0.65rem;">Guaraníes</small>
-                                + 50.000
-                            </button>
-                        </div>
-                        <div class="col-4">
-                            <button type="button" class="btn banknote-btn w-100" onclick="quickAddBanknote(100000)">
-                                <small class="d-block opacity-75" style="font-size: 0.65rem;">Guaraníes</small>
-                                + 100.000
-                            </button>
-                        </div>
                     </div>
                 </div>
 
@@ -416,20 +450,70 @@
             </section>
 
             <!-- =====================================================
-                 PESTAÑA 2: FACTURAS Y COMPROMISOS
+                 PESTAÑA 2: INGRESOS, GASTOS FIJOS Y FACTURAS
                  ===================================================== -->
             <section id="tab-bills" class="app-tab d-none">
                 
-                <!-- Tarjeta Superior: Liquidar Todas en Fecha de Cobro -->
+                <!-- Sub-sección: Liquidación de Salario / Detalle de Ingresos -->
+                <div class="vp-card p-3 mb-3 border-success border-opacity-25">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold small text-uppercase text-success mb-0"><i class="fa-solid fa-money-check-dollar me-1"></i>Liquidación / Ingresos</h6>
+                        <span class="badge bg-success bg-opacity-25 text-success" id="incomesTotalBadge">₲ 0</span>
+                    </div>
+                    <p class="text-secondary mb-2" style="font-size: 0.72rem;">
+                        Carga cada rubro líquido de tu ingreso mensual (Sueldo, Horas Extras, Comisiones, Bonificaciones, Honorarios, etc.). Se suman automáticamente.
+                    </p>
+                    <form id="incomeItemForm" onsubmit="handleAddIncomeItem(event)" class="row g-2 mb-3">
+                        <div class="col-6">
+                            <input type="text" id="incomeName" class="form-control form-control-sm" placeholder="Ej: Sueldo, Comisiones, Extra" required>
+                        </div>
+                        <div class="col-4">
+                            <input type="text" inputmode="numeric" id="incomeAmount" class="form-control form-control-sm fw-bold" placeholder="Líquido ₲" oninput="formatCurrencyInput(this)" required>
+                        </div>
+                        <div class="col-2">
+                            <button type="submit" class="btn btn-emerald btn-sm w-100 fw-bold rounded-3 h-100" title="Agregar Ingreso">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </form>
+                    <div id="incomesList" class="d-flex flex-column gap-2"></div>
+                </div>
+
+                <!-- Sub-sección: Gastos Fijos y Descuentos de Boleta -->
+                <div class="vp-card p-3 mb-3 border-info border-opacity-25">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold small text-uppercase text-info mb-0"><i class="fa-solid fa-repeat me-1"></i>Descuentos y Gastos Fijos</h6>
+                        <span class="badge bg-info bg-opacity-25 text-info" id="fixedExpensesTotalBadge">₲ 0</span>
+                    </div>
+                    <p class="text-secondary mb-2" style="font-size: 0.72rem;">
+                        Anota descuentos de planilla o cuotas fijas (cooperativa, IPS, alquiler, internet, préstamo). Se restan de tus ingresos para obtener tu Neto A Cobrar.
+                    </p>
+                    <form id="fixedExpenseForm" onsubmit="handleAddFixedExpense(event)" class="row g-2 mb-3">
+                        <div class="col-6">
+                            <input type="text" id="fixedName" class="form-control form-control-sm" placeholder="Ej: Alquiler, Préstamo, IPS" required>
+                        </div>
+                        <div class="col-4">
+                            <input type="text" inputmode="numeric" id="fixedAmount" class="form-control form-control-sm fw-bold" placeholder="Monto ₲" oninput="formatCurrencyInput(this)" required>
+                        </div>
+                        <div class="col-2">
+                            <button type="submit" class="btn btn-info text-dark btn-sm w-100 fw-bold rounded-3 h-100" title="Agregar Fijo">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </form>
+                    <div id="fixedExpensesList" class="d-flex flex-column gap-2"></div>
+                </div>
+
+                <!-- Tarjeta Superior: Liquidar Facturas Puntuales en Fecha de Cobro -->
                 <div class="vp-card p-3 mb-3 border-success border-opacity-25" style="background: linear-gradient(135deg, rgba(5, 150, 105, 0.16) 0%, #1e293b 100%);">
                     <div class="d-flex align-items-start gap-2 mb-2">
                         <div class="rounded-3 bg-success bg-opacity-25 p-2 text-success">
                             <i class="fa-solid fa-calendar-check"></i>
                         </div>
                         <div>
-                            <h6 class="fw-bold text-white mb-1 small">Pago en Fecha de Cobro (Día <span id="billPaydayLabel">25</span>)</h6>
-                            <p class="text-secondary mb-0" style="font-size: 0.74rem;">
-                                Liquida todas tus facturas pendientes de una vez. Se descuentan del Disponible Neto sin afectar tu límite diario.
+                            <h6 class="fw-bold text-white mb-1 small">Facturas Puntuales (Día <span id="billPaydayLabel">25</span>)</h6>
+                            <p class="text-secondary mb-0" style="font-size: 0.72rem;">
+                                Facturas con vencimiento específico (ANDE, tarjetas, compras). Al pagarlas se descuentan de tu saldo libre.
                             </p>
                         </div>
                     </div>
@@ -446,12 +530,12 @@
 
                 <!-- Formulario Nueva Factura -->
                 <div class="vp-card p-3 mb-3">
-                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-file-invoice-dollar me-1 text-warning"></i>Agregar Factura o Compromiso</h6>
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-file-invoice-dollar me-1 text-warning"></i>Agregar Factura con Vencimiento</h6>
                     <form id="billForm" onsubmit="handleAddBill(event)">
                         <div class="row g-2 mb-2">
                             <div class="col-6">
                                 <label class="form-label small text-secondary mb-1">Servicio / Concepto</label>
-                                <input type="text" id="billName" class="form-control form-control-sm" placeholder="Ej: ANDE, ESSAP, Internet" required>
+                                <input type="text" id="billName" class="form-control form-control-sm" placeholder="Ej: ANDE, Tarjeta..." required>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small text-secondary mb-1">Monto (₲)</label>
@@ -477,7 +561,65 @@
             </section>
 
             <!-- =====================================================
-                 PESTAÑA 3: REPORTES Y EXPORTACIÓN EXCEL
+                 PESTAÑA 3: MIS AHORROS Y METAS
+                 ===================================================== -->
+            <section id="tab-savings" class="app-tab d-none">
+                
+                <!-- Tarjeta Principal de Capital Ahorrado -->
+                <div class="savings-card p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-uppercase text-light opacity-75 fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Capital Total Ahorrado</span>
+                        <span class="badge rounded-pill bg-dark bg-opacity-75 text-info border border-info border-opacity-25"><i class="fa-solid fa-piggy-bank me-1"></i>Fondo Protegido</span>
+                    </div>
+                    <h2 class="fw-extrabold text-white mb-2" id="displayTotalSavings">₲ 0</h2>
+                    <p class="text-light opacity-75 mb-0" style="font-size: 0.72rem;">
+                        Este capital es independiente de tu ciclo mensual y se mantiene intacto aunque reinicies tus gastos del mes.
+                    </p>
+                </div>
+
+                <!-- Formulario de Movimiento de Ahorro -->
+                <div class="vp-card p-3 mb-3">
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-vault me-1 text-info"></i>Registrar Movimiento de Ahorro</h6>
+                    <form id="savingsForm" onsubmit="handleSavingsMovement(event)">
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small text-secondary mb-1">Operación</label>
+                                <select id="savType" class="form-select form-select-sm fw-bold">
+                                    <option value="deposit">+ Guardar / Depositar</option>
+                                    <option value="withdraw">- Retirar Ahorro</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-secondary mb-1">Monto (₲)</label>
+                                <input type="text" inputmode="numeric" id="savAmount" class="form-control form-control-sm fw-bold" placeholder="Ej: 200.000" oninput="formatCurrencyInput(this)" required>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small text-secondary mb-1">Meta o Concepto</label>
+                            <input type="text" id="savDesc" class="form-control form-control-sm" placeholder="Ej: Fondo emergencia, Cooperativa, Auto..." required>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="savDeductFromCycle">
+                            <label class="form-check-label small text-secondary" for="savDeductFromCycle">
+                                Descontar este depósito de mi saldo disponible del mes
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold rounded-3 py-2">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Registrar en Ahorros
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Historial de Ahorros -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-0">Historial de Ahorros</h6>
+                    <span class="badge bg-secondary bg-opacity-25 text-secondary" id="savingsCountBadge">0</span>
+                </div>
+                <div id="savingsHistoryList" class="d-flex flex-column gap-2"></div>
+            </section>
+
+            <!-- =====================================================
+                 PESTAÑA 4: REPORTES Y EXPORTACIÓN EXCEL
                  ===================================================== -->
             <section id="tab-reports" class="app-tab d-none">
                 
@@ -486,7 +628,7 @@
                     <div class="d-flex justify-content-between align-items-center gap-2">
                         <div>
                             <h6 class="fw-bold text-white mb-1 small"><i class="fa-solid fa-file-excel text-success me-1"></i>Descargar Reporte Excel (.xlsx)</h6>
-                            <p class="text-secondary mb-0" style="font-size: 0.72rem;">Genera libro con 3 hojas: Resumen, Facturas e Historial de Gastos.</p>
+                            <p class="text-secondary mb-0" style="font-size: 0.72rem;">Genera libro con 5 hojas: Resumen, Ingresos, Descuentos Fijos, Facturas e Historial.</p>
                         </div>
                         <button type="button" class="btn btn-emerald btn-sm fw-bold rounded-3 px-3 py-2 text-nowrap" onclick="exportExcelReport()">
                             <i class="fa-solid fa-download me-1"></i> Excel
@@ -496,7 +638,7 @@
 
                 <!-- Gráfico Circular (Chart.js) -->
                 <div class="vp-card p-3 mb-3">
-                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-chart-pie me-1 text-info"></i>Gastos por Categoría</h6>
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-chart-pie me-1 text-info"></i>Gastos Cotidianos por Categoría</h6>
                     <div style="position: relative; height: 240px; width: 100%;">
                         <canvas id="categoryDoughnutChart"></canvas>
                     </div>
@@ -510,13 +652,13 @@
             </section>
 
             <!-- =====================================================
-                 PESTAÑA 4: AJUSTES, RESPALDO Y CRÉDITOS
+                 PESTAÑA 5: AJUSTES, DONACIÓN, CONTACTO Y CRÉDITOS
                  ===================================================== -->
             <section id="tab-settings" class="app-tab d-none">
                 
-                <!-- Configuración de Usuario, Presupuesto y Contraseña -->
+                <!-- Configuración de Usuario, Presupuesto, Contraseña y Recuperación -->
                 <div class="vp-card p-3 mb-3">
-                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-user-gear me-1 text-success"></i>Perfil, Ciclo y Seguridad</h6>
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-user-gear me-1 text-success"></i>Perfil, Ciclo y Seguridad (Opcional)</h6>
                     <form id="settingsForm" onsubmit="handleSaveSettings(event)">
                         <div class="mb-2">
                             <label class="form-label small text-secondary mb-1">Nombre de Usuario</label>
@@ -524,28 +666,113 @@
                         </div>
                         <div class="row g-2 mb-2">
                             <div class="col-7">
-                                <label class="form-label small text-secondary mb-1">Sueldo Base (₲)</label>
-                                <input type="text" inputmode="numeric" id="cfgSalary" class="form-control form-control-sm fw-bold" oninput="formatCurrencyInput(this)" required>
+                                <label class="form-label small text-secondary mb-1">Total Ingresos Líquidos (₲)</label>
+                                <input type="text" id="cfgSalaryDisplay" class="form-control form-control-sm fw-bold text-success" readonly title="Se calcula automáticamente desde la pestaña Ingresos/Fact.">
                             </div>
                             <div class="col-5">
                                 <label class="form-label small text-secondary mb-1">Día de Cobro (1-31)</label>
                                 <input type="number" min="1" max="31" id="cfgPayday" class="form-control form-control-sm fw-bold" required>
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label small text-secondary mb-1">Contraseña o PIN de Acceso</label>
+                        <div class="mb-2">
+                            <small class="text-secondary d-block mb-2" style="font-size: 0.68rem;">
+                                <i class="fa-solid fa-circle-info text-info me-1"></i>Edita el detalle de tus rubros de salario en la pestaña <strong>Ingresos/Fact.</strong>
+                            </small>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small text-secondary mb-1">Contraseña o PIN de Acceso (Opcional)</label>
                             <div class="input-group input-group-sm">
-                                <input type="password" id="cfgPassword" class="form-control fw-bold" placeholder="Dejar vacío para desactivar bloqueo">
+                                <input type="password" id="cfgPassword" class="form-control fw-bold" placeholder="Vacío = Sin bloqueo al iniciar">
                                 <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('cfgPassword', this)" title="Mostrar / Ocultar">
                                     <i class="fa-solid fa-eye"></i>
                                 </button>
                             </div>
-                            <small class="text-secondary" style="font-size: 0.68rem;">Soporta números o letras. Déjalo en blanco si no deseas bloqueo.</small>
+                            <small class="text-secondary" style="font-size: 0.68rem;">Si lo dejas vacío, la app entrará directo sin pedir PIN.</small>
                         </div>
+
+                        <!-- Pregunta y Respuesta de Recuperación -->
+                        <div class="p-2 rounded-3 bg-dark border border-secondary border-opacity-25 mb-3 mt-2">
+                            <small class="text-warning fw-bold d-block mb-1" style="font-size: 0.72rem;"><i class="fa-solid fa-life-ring me-1"></i>Recuperación de PIN (si activas bloqueo)</small>
+                            <div class="mb-2">
+                                <label class="form-label small text-secondary mb-1" style="font-size: 0.72rem;">Pregunta de Seguridad</label>
+                                <input type="text" id="cfgSecurityQuestion" class="form-control form-control-sm" placeholder="Ej: ¿Nombre de mi primera mascota?">
+                            </div>
+                            <div>
+                                <label class="form-label small text-secondary mb-1" style="font-size: 0.72rem;">Respuesta Secreta</label>
+                                <input type="text" id="cfgSecurityAnswer" class="form-control form-control-sm" placeholder="Ej: Toby">
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn btn-emerald w-100 fw-bold rounded-3 py-2">
                             <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Configuración
                         </button>
                     </form>
+                </div>
+
+                <!-- Apoya a ViruPy, Donación Bancaria y Contacto -->
+                <div class="vp-card p-3 mb-3 border-warning border-opacity-25" style="background: linear-gradient(145deg, rgba(245, 158, 11, 0.08) 0%, #1e293b 100%);">
+                    <h6 class="fw-bold small text-uppercase text-warning mb-2">
+                        <i class="fa-solid fa-hand-holding-dollar me-1"></i>Apoya a ViruPy y Contacto
+                    </h6>
+                    <p class="text-secondary mb-2" style="font-size: 0.74rem;">
+                        Si ViruPy te ayuda a organizar tus finanzas, puedes apoyar el desarrollo con una transferencia voluntaria o escribirme directamente.
+                    </p>
+
+                    <!-- Bloque de Datos Bancarios en PYG -->
+                    <div class="p-3 rounded-3 bg-dark border border-secondary border-opacity-25 mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom border-secondary border-opacity-25">
+                            <small class="text-success fw-bold" style="font-size: 0.72rem;">
+                                <i class="fa-solid fa-building-columns me-1"></i>Transferencia Bancaria (PYG)
+                            </small>
+                            <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2 rounded-3 fw-semibold" style="font-size: 0.68rem;" onclick="copyBankAccount()">
+                                <i class="fa-regular fa-copy me-1"></i>Copiar Alias/Cuenta
+                            </button>
+                        </div>
+                        <div class="small text-light" style="font-size: 0.75rem; line-height: 1.55;">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-secondary">Banco / Entidad:</span>
+                                <span class="fw-semibold text-white" id="bankEntityText">Banco Itaú</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-secondary">Alias (C.I.):</span>
+                                <span class="fw-bold text-warning" id="bankAccountText">4749300</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-secondary">Titular:</span>
+                                <span class="fw-semibold text-white">Cesar Borja</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-secondary">C.I. / R.U.C.:</span>
+                                <span class="fw-semibold text-white" id="bankIdText">4.749.300</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botón Directo de Contacto por WhatsApp -->
+                    <button type="button" class="btn btn-outline-success w-100 fw-bold rounded-3 py-2 mb-3" onclick="contactViaWhatsApp()">
+                        <i class="fa-brands fa-whatsapp me-1 fs-6"></i> Contactar por WhatsApp (+595 972 964019)
+                    </button>
+
+                    <!-- Enlace APK, Compartir y Descargar -->
+                    <div class="pt-2 border-top border-light border-opacity-10">
+                        <label class="form-label small text-secondary mb-1" style="font-size: 0.7rem;">Enlace del APK (opcional). Vacío = usa ViruPy.apk de este sitio:</label>
+                        <div class="input-group input-group-sm mb-2">
+                            <input type="url" id="cfgApkUrl" class="form-control" placeholder="https://drive.google.com/...">
+                            <button type="button" class="btn btn-outline-success fw-bold" onclick="saveApkLink()">Guardar</button>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-light btn-sm w-100 fw-bold rounded-3 py-2" onclick="shareViruPy()">
+                                    <i class="fa-solid fa-share-nodes me-1"></i> Compartir App
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-emerald btn-sm w-100 fw-bold rounded-3 py-2" onclick="downloadApkFile()">
+                                    <i class="fa-solid fa-download me-1"></i> Bajar APK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Gestión de Categorías Personalizadas -->
@@ -558,18 +785,22 @@
                     <div id="customCategoriesContainer" class="d-flex flex-wrap gap-1 mt-2"></div>
                 </div>
 
-                <!-- Copia de Seguridad (.JSON) -->
+                <!-- Copia de Seguridad (.JSON) y Reinicio -->
                 <div class="vp-card p-3 mb-3">
-                    <h6 class="fw-bold small text-uppercase text-secondary mb-2"><i class="fa-solid fa-shield-halved me-1 text-warning"></i>Copia de Seguridad (Backup)</h6>
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-2"><i class="fa-solid fa-shield-halved me-1 text-warning"></i>Copia de Seguridad y Reinicio</h6>
                     <p class="text-secondary mb-2" style="font-size: 0.74rem;">
-                        Exporta tus datos para guardarlos en Google Drive o WhatsApp y restaurarlos si cambias de teléfono.
+                        Exporta tus datos para guardarlos en Google Drive o WhatsApp, o reinicia la app a cero.
                     </p>
                     <button type="button" class="btn btn-outline-info btn-sm w-100 fw-bold rounded-3 py-2 mb-3" onclick="exportBackupJson()">
                         <i class="fa-solid fa-cloud-arrow-down me-1"></i> Exportar Respaldo (.JSON)
                     </button>
 
                     <label class="form-label small text-secondary mb-1">Restaurar desde archivo .json:</label>
-                    <input type="file" id="importJsonFile" class="form-control form-control-sm" accept=".json" onchange="importBackupJson(event)">
+                    <input type="file" id="importJsonFile" class="form-control form-control-sm mb-3" accept=".json" onchange="importBackupJson(event)">
+
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100 fw-bold rounded-3 py-2" onclick="resetAllToZero()">
+                        <i class="fa-solid fa-rotate-right me-1"></i> Reiniciar Todos los Datos a 0
+                    </button>
                 </div>
 
                 <!-- Tarjeta Destacada: Acerca de ViruPy (Créditos de Autoría) -->
@@ -579,7 +810,7 @@
                     </div>
                     <h6 class="fw-bold text-white mb-1">Acerca de ViruPy</h6>
                     <p class="small text-light mb-1">
-                        <strong>ViruPy v1.0</strong> • Creado y diseñado por <strong class="text-success">Cesar Borja</strong>
+                        <strong>ViruPy v2.0</strong> • Creado y diseñado por <strong class="text-success">Cesar Borja</strong>
                     </p>
                     <small class="text-secondary d-block" style="font-size: 0.72rem;">
                         Paraguay • Todos los derechos reservados © 2026
@@ -589,7 +820,7 @@
 
         </main>
 
-        <!-- Barra de Navegación Inferior Nativa (4 Pestañas) -->
+        <!-- Barra de Navegación Inferior Nativa (5 Pestañas) -->
         <nav class="bottom-nav">
             <button type="button" class="nav-tab-btn active" id="nav-home" onclick="switchTab('home')">
                 <i class="fa-solid fa-house"></i>
@@ -597,8 +828,12 @@
             </button>
             <button type="button" class="nav-tab-btn position-relative" id="nav-bills" onclick="switchTab('bills')">
                 <i class="fa-solid fa-file-invoice-dollar"></i>
-                <span>Facturas</span>
+                <span>Ingr./Fact.</span>
                 <span id="navBillsAlertDot" class="position-absolute top-0 start-75 translate-middle badge rounded-pill bg-warning text-dark d-none" style="font-size: 0.6rem;">!</span>
+            </button>
+            <button type="button" class="nav-tab-btn" id="nav-savings" onclick="switchTab('savings')">
+                <i class="fa-solid fa-piggy-bank"></i>
+                <span>Ahorros</span>
             </button>
             <button type="button" class="nav-tab-btn" id="nav-reports" onclick="switchTab('reports')">
                 <i class="fa-solid fa-chart-pie"></i>
@@ -609,6 +844,96 @@
                 <span>Ajustes</span>
             </button>
         </nav>
+    </div>
+
+    <!-- =========================================================
+         MODAL: GUÍA PRÁCTICA DE USO
+         ========================================================= -->
+    <div class="modal fade" id="helpGuideModal" tabindex="-1" aria-labelledby="helpGuideModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header border-bottom border-secondary border-opacity-25">
+                    <h6 class="modal-title fw-bold text-white" id="helpGuideModalLabel">
+                        <i class="fa-solid fa-book-open text-info me-2"></i>Guía Práctica de ViruPy
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="accordion accordion-flush" id="guideAccordion">
+                        
+                        <div class="accordion-item rounded-3 mb-2 border">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#guide1">
+                                    1. Detalle de Ingresos y Presupuesto Neto
+                                </button>
+                            </h2>
+                            <div id="guide1" class="accordion-collapse collapse show" data-bs-parent="#guideAccordion">
+                                <div class="accordion-body small text-secondary">
+                                    En la pestaña <em>Ingr./Fact.</em> puedes cargar cada fuente o rubro líquido de tu mes (por ejemplo: sueldo base, horas extras, comisiones, bonificaciones, ventas o trabajos independientes) y tus descuentos o cuotas fijas (alquiler, préstamos, cooperativa, servicios fijos). ViruPy calcula automáticamente tu <strong>Neto A Cobrar</strong>.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item rounded-3 mb-2 border">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#guide2">
+                                    2. Cómo funciona el Semáforo Diario
+                                </button>
+                            </h2>
+                            <div id="guide2" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+                                <div class="accordion-body small text-secondary">
+                                    Divide tu saldo libre entre los días reales que faltan para tu próximo cobro (adaptándose automáticamente a meses de 28, 30 o 31 días). Si gastas menos del 80% del límite diario estará en <strong class="text-success">Verde</strong>, entre 80% y 100% en <strong class="text-warning">Amarillo</strong>, y si te pasas en <strong class="text-danger">Rojo</strong>.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item rounded-3 mb-2 border">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#guide3">
+                                    3. Gastos Fijos y Facturas Puntuales
+                                </button>
+                            </h2>
+                            <div id="guide3" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+                                <div class="accordion-body small text-secondary">
+                                    <strong>Gastos Fijos:</strong> Compromisos recurrentes del mes como alquiler, cuotas o suscripciones fijas.<br>
+                                    <strong>Facturas Puntuales:</strong> Boletas con fecha de vencimiento (luz, agua, internet, tarjetas o compras puntuales); te avisan 5 días antes y se descuentan recién cuando marcas <em>Pagar</em>.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item rounded-3 mb-2 border">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#guide4">
+                                    4. Mis Ahorros y Metas
+                                </button>
+                            </h2>
+                            <div id="guide4" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+                                <div class="accordion-body small text-secondary">
+                                    Guarda aquí tu fondo de emergencia o metas personales (viajes, estudios, herramientas, etc.). Puedes elegir si el depósito se descuenta de tu saldo disponible del mes y tu ahorro acumulado se mantendrá intacto al cambiar de ciclo.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item rounded-3 border">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#guide5">
+                                    5. PIN Opcional, Recuperación y Respaldo
+                                </button>
+                            </h2>
+                            <div id="guide5" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+                                <div class="accordion-body small text-secondary">
+                                    La aplicación entra directo sin pedir PIN. Si deseas bloquearla, configura una clave y tu <strong>Pregunta de Seguridad</strong> en Ajustes. Usa <em>Exportar Respaldo (.JSON)</em> para guardar tus datos en Drive o WhatsApp.
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer border-top border-secondary border-opacity-25 py-2">
+                    <button type="button" class="btn btn-emerald btn-sm fw-bold rounded-3 px-4" data-bs-dismiss="modal">Entendido</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Toast de Mensajes -->
@@ -626,37 +951,44 @@
 
     <script>
         // =========================================================
-        // 1. ESTADO INICIAL Y PERSISTENCIA LOCAL (LOCALSTORAGE)
+        // 1. ESTADO INICIAL LIMPIO EN CERO (SIN PIN POR DEFECTO)
         // =========================================================
-        const STORAGE_KEY = 'virupy_cesarborja_v2';
+        const STORAGE_KEY = 'virupy_clean_v2_release';
 
         function getTodayISO() {
             const d = new Date();
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
-        function getOffsetDateISO(days) {
-            const d = new Date();
-            d.setDate(d.getDate() + days);
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        function getDefaultState() {
+            return {
+                userName: "Usuario",
+                password: "",
+                securityQuestion: "",
+                securityAnswer: "",
+                salary: 0,
+                payday: 25,
+                apkUrl: "",
+                categories: ["Comida", "Transporte", "Supermercado", "Ocio", "Salud", "Varios"],
+                incomes: [],
+                fixedExpenses: [],
+                expenses: [],
+                bills: [],
+                savings: []
+            };
         }
 
-        let state = {
-            userName: "Usuario",
-            password: "1234",
-            salary: 0,
-            payday: 25,
-            categories: ["Comida", "Transporte", "Supermercado", "Ocio", "Salud", "Varios"],
-            expenses: [],
-            bills: []
-        };
+        let state = getDefaultState();
 
         function loadState() {
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
                 if (saved) {
                     const parsed = JSON.parse(saved);
-                    state = { ...state, ...parsed };
+                    state = { ...getDefaultState(), ...parsed };
+                    if (!Array.isArray(state.incomes)) state.incomes = [];
+                    if (!Array.isArray(state.fixedExpenses)) state.fixedExpenses = [];
+                    if (!Array.isArray(state.savings)) state.savings = [];
                 }
             } catch (e) {
                 console.error("Error leyendo almacenamiento local:", e);
@@ -670,6 +1002,14 @@
                 console.error("Error guardando almacenamiento local:", e);
             }
             renderAll();
+        }
+
+        function resetAllToZero() {
+            localStorage.removeItem(STORAGE_KEY);
+            state = getDefaultState();
+            saveState();
+            notify("Todos los datos fueron reiniciados a 0");
+            switchTab('home');
         }
 
         // =========================================================
@@ -687,7 +1027,7 @@
         }
 
         function parsePYG(str) {
-            if (typeof val === 'number') return str;
+            if (typeof str === 'number') return str;
             if (!str) return 0;
             const clean = str.toString().replace(/\D/g, '');
             return clean ? parseInt(clean, 10) : 0;
@@ -701,9 +1041,10 @@
         function notify(msg, isError = false) {
             const toastEl = document.getElementById('appToast');
             const toastText = document.getElementById('appToastText');
+            if (!toastEl || !toastText) return;
             toastEl.className = `toast align-items-center text-bg-${isError ? 'danger' : 'success'} border-0 rounded-4 shadow-lg`;
             toastText.textContent = msg;
-            new bootstrap.Toast(toastEl, { delay: 2400 }).show();
+            new bootstrap.Toast(toastEl, { delay: 2500 }).show();
         }
 
         function escapeHTML(str) {
@@ -715,7 +1056,7 @@
         }
 
         // =========================================================
-        // 3. SEGURIDAD Y BLOQUEO CON CONTRASEÑA / PIN
+        // 3. SEGURIDAD, BLOQUEO OPCIONAL Y RECUPERACIÓN OFFLINE
         // =========================================================
         function togglePasswordVisibility(inputId, btn) {
             const input = document.getElementById(inputId);
@@ -748,14 +1089,59 @@
                 switchTab('settings');
                 return;
             }
+            closeRecoveryMode();
             document.getElementById('lockWelcomeUser').textContent = `Hola, ${state.userName} • Acceso Protegido`;
             document.getElementById('lockPasswordInput').value = '';
             document.getElementById('lockErrorMsg').classList.add('d-none');
             document.getElementById('lockScreen').style.display = 'flex';
         }
 
+        function openRecoveryMode() {
+            document.getElementById('unlockForm').classList.add('d-none');
+            document.getElementById('recoveryForm').classList.remove('d-none');
+            document.getElementById('recoveryErrorMsg').classList.add('d-none');
+            document.getElementById('recoveryAnswerInput').value = '';
+            document.getElementById('recoveryNewPinInput').value = '';
+            const q = state.securityQuestion && state.securityQuestion.trim() !== ''
+                ? state.securityQuestion
+                : "No configuraste una pregunta de seguridad, por eso no se puede recuperar el PIN.";
+            document.getElementById('recoveryQuestionLabel').textContent = q;
+            const hasQ = !!(state.securityQuestion && state.securityQuestion.trim() && state.securityAnswer && state.securityAnswer.trim());
+            document.getElementById('recoveryResetBtn').classList.toggle('d-none', hasQ);
+        }
+
+        function closeRecoveryMode() {
+            document.getElementById('recoveryForm').classList.add('d-none');
+            document.getElementById('recoveryResetBtn').classList.add('d-none');
+            document.getElementById('unlockForm').classList.remove('d-none');
+        }
+
+        function resetAllData() {
+            if (confirm("¿Borrar TODOS los datos de ViruPy y empezar de cero? Esta acción no se puede deshacer.")) {
+                try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+                location.reload();
+            }
+        }
+
+        function handleRecoverySubmit(e) {
+            e.preventDefault();
+            const ansInput = document.getElementById('recoveryAnswerInput').value.trim().toLowerCase();
+            const newPin = document.getElementById('recoveryNewPinInput').value.trim();
+            const savedAns = (state.securityAnswer || "").trim().toLowerCase();
+
+            if (savedAns !== '' && ansInput === savedAns && newPin !== '') {
+                state.password = newPin;
+                saveState();
+                closeRecoveryMode();
+                document.getElementById('lockScreen').style.display = 'none';
+                notify("¡Contraseña restablecida con éxito!");
+            } else {
+                document.getElementById('recoveryErrorMsg').classList.remove('d-none');
+            }
+        }
+
         // =========================================================
-        // 4. LÓGICA FINANCIERA: CICLO DE 30 DÍAS Y SEMÁFORO DIARIO
+        // 4. LÓGICA FINANCIERA: CICLO REAL Y SEMÁFORO DIARIO
         // =========================================================
         function getCycleInfo() {
             const today = new Date();
@@ -765,39 +1151,47 @@
             const month = today.getMonth();
             const day = today.getDate();
 
-            let cycleStart = new Date(year, month, state.payday);
-            if (day < state.payday) {
-                cycleStart = new Date(year, month - 1, state.payday);
-            }
-            cycleStart.setHours(0, 0, 0, 0);
+            const lastDayCurrentMonth = new Date(year, month + 1, 0).getDate();
+            const startDayCurrent = Math.min(state.payday, lastDayCurrentMonth);
 
-            const cycleEnd = new Date(cycleStart);
-            cycleEnd.setDate(cycleEnd.getDate() + 30);
+            let cycleStart, cycleEnd;
+
+            if (day >= startDayCurrent) {
+                cycleStart = new Date(year, month, startDayCurrent);
+                const lastDayNextMonth = new Date(year, month + 2, 0).getDate();
+                const endDayNext = Math.min(state.payday, lastDayNextMonth);
+                cycleEnd = new Date(year, month + 1, endDayNext);
+            } else {
+                const lastDayPrevMonth = new Date(year, month, 0).getDate();
+                const startDayPrev = Math.min(state.payday, lastDayPrevMonth);
+                cycleStart = new Date(year, month - 1, startDayPrev);
+                cycleEnd = new Date(year, month, startDayCurrent);
+            }
+
+            cycleStart.setHours(0, 0, 0, 0);
+            cycleEnd.setHours(0, 0, 0, 0);
 
             const msPerDay = 1000 * 60 * 60 * 24;
             let daysLeft = Math.ceil((cycleEnd - today) / msPerDay);
             if (daysLeft < 1) daysLeft = 1;
-            if (daysLeft > 30) daysLeft = 30;
 
             return { cycleStart, cycleEnd, daysLeft };
         }
 
         function isDateInCurrentCycle(dateStr, cycleStart, cycleEnd) {
             const d = new Date(dateStr + 'T00:00:00');
-            return d >= cycleStart && d <= cycleEnd;
+            return d >= cycleStart && d < cycleEnd;
         }
 
         function renderAll() {
             const { cycleStart, cycleEnd, daysLeft } = getCycleInfo();
             const todayISO = getTodayISO();
 
-            // Encabezados
             document.getElementById('headerSubtitle').textContent = `Hola, ${state.userName} • Cobro día ${state.payday}`;
             document.getElementById('lockWelcomeUser').textContent = `Hola, ${state.userName} • Acceso Protegido`;
             document.getElementById('billPaydayLabel').textContent = state.payday;
             document.getElementById('badgeDaysLeft').textContent = `${daysLeft} días rest.`;
 
-            // Mostrar u ocultar botón de bloqueo rápido según si hay contraseña activa
             const lockBtn = document.getElementById('btnHeaderLock');
             if (state.password && state.password.trim() !== '') {
                 lockBtn.classList.remove('d-none');
@@ -805,32 +1199,43 @@
                 lockBtn.classList.add('d-none');
             }
 
-            // Cálculos del Ciclo
+            // 0. Total Ingresos Líquidos
+            const totalIncomes = state.incomes.reduce((sum, inc) => sum + inc.amount, 0);
+            state.salary = totalIncomes;
+
+            // 1. Gastos Fijos y Descuentos
+            const fixedTotal = state.fixedExpenses.reduce((sum, f) => sum + f.amount, 0);
+
+            // 2. Presupuesto Neto Mensual
+            const netMonthlyBudget = totalIncomes - fixedTotal;
+
+            // 3. Facturas Puntuales Pagadas
             const paidBillsTotal = state.bills
                 .filter(b => b.paid)
                 .reduce((sum, b) => sum + b.amount, 0);
 
+            // 4. Gastos Cotidianos del Ciclo
             const cycleExpenses = state.expenses.filter(e => isDateInCurrentCycle(e.date, cycleStart, cycleEnd));
             const cycleExpensesTotal = cycleExpenses.reduce((sum, e) => sum + e.amount, 0);
 
             const todaySpent = state.expenses
-                .filter(e => e.date === todayISO)
+                .filter(e => e.date === todayISO && !e.isSavingsTransfer)
                 .reduce((sum, e) => sum + e.amount, 0);
 
-            // Disponible Neto = Sueldo Base - Facturas Pagadas - Gastos Cotidianos del Ciclo
-            const netBalance = state.salary - paidBillsTotal - cycleExpensesTotal;
+            // Saldo Libre Disponible
+            const availableBalance = netMonthlyBudget - paidBillsTotal - cycleExpensesTotal;
 
-            // Límite Diario Sugerido basado en disponible al inicio de hoy / días restantes
-            const availableStartToday = netBalance + todaySpent;
+            // Límite Diario Sugerido
+            const availableStartToday = availableBalance + todaySpent;
             const dailyLimit = availableStartToday > 0 ? Math.floor(availableStartToday / daysLeft) : 0;
 
-            // Actualizar Tarjeta Principal
-            document.getElementById('displayNetBalance').textContent = formatPYG(netBalance);
-            document.getElementById('displayBaseSalary').textContent = formatPYG(state.salary);
+            document.getElementById('displayAvailableBalance').textContent = formatPYG(availableBalance);
+            document.getElementById('displayNetBudget').textContent = formatPYG(netMonthlyBudget);
+            document.getElementById('displayBaseSalary').textContent = formatPYG(totalIncomes);
+            document.getElementById('displayFixedTotal').textContent = formatPYG(fixedTotal);
             document.getElementById('displayPaidBills').textContent = formatPYG(paidBillsTotal);
             document.getElementById('displayCycleExpenses').textContent = formatPYG(cycleExpensesTotal);
 
-            // Actualizar Semáforo Diario (evalúa únicamente gastos cotidianos de hoy)
             document.getElementById('displayDailyLimit').textContent = formatPYG(dailyLimit);
             document.getElementById('displayTodaySpent').textContent = formatPYG(todaySpent);
 
@@ -862,16 +1267,20 @@
 
             renderCategorySelect();
             renderRecentExpenses();
+            renderIncomes();
+            renderFixedExpenses();
             renderBills();
+            renderSavings();
             renderReports();
             populateSettingsForm();
         }
 
         // =========================================================
-        // 5. GASTOS COTIDIANOS Y BILLETES RÁPIDOS
+        // 5. GASTOS COTIDIANOS
         // =========================================================
         function renderCategorySelect() {
             const select = document.getElementById('expCategory');
+            if (!select) return;
             const current = select.value;
             select.innerHTML = '';
             state.categories.forEach(cat => {
@@ -883,19 +1292,6 @@
             if (state.categories.includes(current)) {
                 select.value = current;
             }
-        }
-
-        function quickAddBanknote(amount) {
-            const cat = state.categories.includes("Comida") ? "Comida" : state.categories[0];
-            state.expenses.unshift({
-                id: Date.now(),
-                amount: amount,
-                category: cat,
-                desc: `Billete rápido (${formatPYG(amount)})`,
-                date: getTodayISO()
-            });
-            saveState();
-            notify(`Gasto de ${formatPYG(amount)} registrado`);
         }
 
         function handleAddExpense(e) {
@@ -949,7 +1345,7 @@
                 div.innerHTML = `
                     <div class="d-flex align-items-center gap-2">
                         <div class="rounded-3 bg-dark border border-secondary border-opacity-25 d-flex align-items-center justify-content-center text-success" style="width: 38px; height: 38px;">
-                            <i class="fa-solid fa-receipt"></i>
+                            <i class="fa-solid ${exp.isSavingsTransfer ? 'fa-piggy-bank text-info' : 'fa-receipt'}"></i>
                         </div>
                         <div>
                             <div class="fw-bold text-white small">${escapeHTML(exp.desc)}</div>
@@ -970,7 +1366,124 @@
         }
 
         // =========================================================
-        // 6. FACTURAS Y ALERTAS DE VENCIMIENTO (<= 5 DÍAS)
+        // 6. LIQUIDACIÓN DE INGRESOS Y GASTOS FIJOS
+        // =========================================================
+        function handleAddIncomeItem(e) {
+            e.preventDefault();
+            const name = document.getElementById('incomeName').value.trim();
+            const amount = parsePYG(document.getElementById('incomeAmount').value);
+
+            if (!name || amount <= 0) {
+                notify("Ingresa el concepto y el monto líquido del ingreso", true);
+                return;
+            }
+
+            state.incomes.push({
+                id: Date.now(),
+                name,
+                amount
+            });
+
+            document.getElementById('incomeName').value = '';
+            document.getElementById('incomeAmount').value = '';
+            saveState();
+            notify(`Ingreso "${name}" agregado`);
+        }
+
+        function deleteIncomeItem(id) {
+            state.incomes = state.incomes.filter(inc => inc.id !== id);
+            saveState();
+            notify("Rubro de ingreso eliminado");
+        }
+
+        function renderIncomes() {
+            const list = document.getElementById('incomesList');
+            const totalBadge = document.getElementById('incomesTotalBadge');
+            list.innerHTML = '';
+
+            const total = state.incomes.reduce((sum, inc) => sum + inc.amount, 0);
+            totalBadge.textContent = formatPYG(total);
+
+            if (state.incomes.length === 0) {
+                list.innerHTML = `<div class="text-secondary small text-center py-1">Sin rubros de ingreso cargados aún.</div>`;
+                return;
+            }
+
+            state.incomes.forEach(item => {
+                const row = document.createElement('div');
+                row.className = "d-flex justify-content-between align-items-center bg-dark rounded-3 px-3 py-2 border border-secondary border-opacity-25";
+                row.innerHTML = `
+                    <span class="fw-semibold text-white small">${escapeHTML(item.name)}</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-bold text-success small">${formatPYG(item.amount)}</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0 px-1" onclick="deleteIncomeItem(${item.id})" title="Eliminar">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function handleAddFixedExpense(e) {
+            e.preventDefault();
+            const name = document.getElementById('fixedName').value.trim();
+            const amount = parsePYG(document.getElementById('fixedAmount').value);
+
+            if (!name || amount <= 0) {
+                notify("Ingresa el nombre y monto del gasto fijo", true);
+                return;
+            }
+
+            state.fixedExpenses.push({
+                id: Date.now(),
+                name,
+                amount
+            });
+
+            document.getElementById('fixedName').value = '';
+            document.getElementById('fixedAmount').value = '';
+            saveState();
+            notify(`Gasto fijo "${name}" agregado`);
+        }
+
+        function deleteFixedExpense(id) {
+            state.fixedExpenses = state.fixedExpenses.filter(f => f.id !== id);
+            saveState();
+            notify("Gasto fijo eliminado");
+        }
+
+        function renderFixedExpenses() {
+            const list = document.getElementById('fixedExpensesList');
+            const totalBadge = document.getElementById('fixedExpensesTotalBadge');
+            list.innerHTML = '';
+
+            const total = state.fixedExpenses.reduce((sum, f) => sum + f.amount, 0);
+            totalBadge.textContent = formatPYG(total);
+
+            if (state.fixedExpenses.length === 0) {
+                list.innerHTML = `<div class="text-secondary small text-center py-1">Sin descuentos ni gastos fijos registrados aún.</div>`;
+                return;
+            }
+
+            state.fixedExpenses.forEach(item => {
+                const row = document.createElement('div');
+                row.className = "d-flex justify-content-between align-items-center bg-dark rounded-3 px-3 py-2 border border-secondary border-opacity-25";
+                row.innerHTML = `
+                    <span class="fw-semibold text-white small">${escapeHTML(item.name)}</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-bold text-info small">${formatPYG(item.amount)}</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0 px-1" onclick="deleteFixedExpense(${item.id})" title="Eliminar">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        // =========================================================
+        // 7. FACTURAS PUNTUALES Y ALERTAS DE VENCIMIENTO (<= 5 DÍAS)
         // =========================================================
         function handleAddBill(e) {
             e.preventDefault();
@@ -1015,7 +1528,7 @@
             }
             state.bills.forEach(b => b.paid = true);
             saveState();
-            notify(`¡${pending.length} factura(s) pagada(s) del Disponible Neto!`);
+            notify(`¡${pending.length} factura(s) pagada(s) del Saldo Libre!`);
         }
 
         function deleteBill(id) {
@@ -1039,7 +1552,7 @@
             let alertCount = 0;
 
             if (state.bills.length === 0) {
-                container.innerHTML = `<div class="vp-card p-3 text-center text-secondary small">No tienes facturas cargadas este mes.</div>`;
+                container.innerHTML = `<div class="vp-card p-3 text-center text-secondary small">No tienes facturas puntuales cargadas.</div>`;
             }
 
             const sorted = [...state.bills].sort((a, b) => {
@@ -1108,7 +1621,103 @@
         }
 
         // =========================================================
-        // 7. REPORTES (CHART.JS) Y EXCEL (.XLSX) DE 3 HOJAS
+        // 8. MÓDULO INDEPENDIENTE DE AHORROS
+        // =========================================================
+        function handleSavingsMovement(e) {
+            e.preventDefault();
+            const type = document.getElementById('savType').value;
+            const amount = parsePYG(document.getElementById('savAmount').value);
+            const desc = document.getElementById('savDesc').value.trim();
+            const deduct = document.getElementById('savDeductFromCycle').checked;
+
+            if (amount <= 0 || !desc) {
+                notify("Ingresa un monto y un concepto válido", true);
+                return;
+            }
+
+            const currentTotal = state.savings.reduce((sum, s) => s.type === 'deposit' ? sum + s.amount : sum - s.amount, 0);
+            if (type === 'withdraw' && amount > currentTotal) {
+                notify("No puedes retirar más del saldo total ahorrado", true);
+                return;
+            }
+
+            const today = getTodayISO();
+            state.savings.unshift({
+                id: Date.now(),
+                type,
+                amount,
+                desc,
+                date: today
+            });
+
+            if (type === 'deposit' && deduct) {
+                state.expenses.unshift({
+                    id: Date.now() + 1,
+                    amount,
+                    category: "Ahorro",
+                    desc: `Ahorro: ${desc}`,
+                    date: today,
+                    isSavingsTransfer: true
+                });
+            }
+
+            document.getElementById('savAmount').value = '';
+            document.getElementById('savDesc').value = '';
+            document.getElementById('savDeductFromCycle').checked = false;
+
+            saveState();
+            notify(type === 'deposit' ? "Depósito guardado en tus ahorros" : "Retiro de ahorro registrado");
+        }
+
+        function deleteSavingsItem(id) {
+            state.savings = state.savings.filter(s => s.id !== id);
+            saveState();
+            notify("Movimiento de ahorro eliminado");
+        }
+
+        function renderSavings() {
+            const totalEl = document.getElementById('displayTotalSavings');
+            const listEl = document.getElementById('savingsHistoryList');
+            const badgeEl = document.getElementById('savingsCountBadge');
+
+            const total = state.savings.reduce((sum, s) => s.type === 'deposit' ? sum + s.amount : sum - s.amount, 0);
+            totalEl.textContent = formatPYG(total);
+            badgeEl.textContent = state.savings.length;
+            listEl.innerHTML = '';
+
+            if (state.savings.length === 0) {
+                listEl.innerHTML = `<div class="vp-card p-3 text-center text-secondary small">Aún no tienes movimientos registrados en tus ahorros.</div>`;
+                return;
+            }
+
+            state.savings.forEach(item => {
+                const isDep = item.type === 'deposit';
+                const dateFmt = item.date.split('-').reverse().join('/');
+                const card = document.createElement('div');
+                card.className = "vp-card p-3 d-flex justify-content-between align-items-center";
+                card.innerHTML = `
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-3 bg-dark border border-secondary border-opacity-25 d-flex align-items-center justify-content-center ${isDep ? 'text-info' : 'text-warning'}" style="width: 38px; height: 38px;">
+                            <i class="fa-solid ${isDep ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-white small">${escapeHTML(item.desc)}</div>
+                            <small class="text-secondary" style="font-size: 0.7rem;">${isDep ? 'Depósito' : 'Retiro'} • ${dateFmt}</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-bold ${isDep ? 'text-info' : 'text-warning'} small">${isDep ? '+' : '-'} ${formatPYG(item.amount)}</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0 px-2 py-1" onclick="deleteSavingsItem(${item.id})" title="Eliminar">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                listEl.appendChild(card);
+            });
+        }
+
+        // =========================================================
+        // 9. REPORTES (CHART.JS) Y EXCEL (.XLSX) DE 5 HOJAS
         // =========================================================
         let chartInstance = null;
 
@@ -1142,7 +1751,9 @@
                 });
             }
 
-            const ctx = document.getElementById('categoryDoughnutChart').getContext('2d');
+            const canvasEl = document.getElementById('categoryDoughnutChart');
+            if (!canvasEl) return;
+            const ctx = canvasEl.getContext('2d');
             if (chartInstance) chartInstance.destroy();
 
             chartInstance = new Chart(ctx, {
@@ -1173,30 +1784,51 @@
 
         function exportExcelReport() {
             const { daysLeft } = getCycleInfo();
+            const totalIncomes = state.incomes.reduce((s, inc) => s + inc.amount, 0);
+            const fixedTotal = state.fixedExpenses.reduce((s, f) => s + f.amount, 0);
+            const netMonthlyBudget = totalIncomes - fixedTotal;
             const paidBills = state.bills.filter(b => b.paid).reduce((s, b) => s + b.amount, 0);
             const pendingBills = state.bills.filter(b => !b.paid).reduce((s, b) => s + b.amount, 0);
             const totalExpenses = state.expenses.reduce((s, e) => s + e.amount, 0);
-            const netBalance = state.salary - paidBills - totalExpenses;
-            const dailyLimit = netBalance > 0 ? Math.floor(netBalance / daysLeft) : 0;
+            const totalSavings = state.savings.reduce((s, item) => item.type === 'deposit' ? s + item.amount : s - item.amount, 0);
+            const availableBalance = netMonthlyBudget - paidBills - totalExpenses;
+            const dailyLimit = availableBalance > 0 ? Math.floor(availableBalance / daysLeft) : 0;
 
-            // Hoja 1: Resumen Financiero
             const resumenSheetData = [
                 { Concepto: "Aplicación", Valor: "ViruPy - Control Financiero (PYG)" },
                 { Concepto: "Usuario", Valor: state.userName },
                 { Concepto: "Fecha del Reporte", Valor: getTodayISO() },
                 { Concepto: "Día de Cobro Configurado", Valor: `Día ${state.payday}` },
                 { Concepto: "Días Restantes del Ciclo", Valor: daysLeft },
-                { Concepto: "Sueldo Base Mensual (₲)", Valor: state.salary },
-                { Concepto: "Facturas Pagadas (₲)", Valor: paidBills },
-                { Concepto: "Facturas Pendientes (₲)", Valor: pendingBills },
+                { Concepto: "Total Ingresos Líquidos (₲)", Valor: totalIncomes },
+                { Concepto: "Total Descuentos y Gastos Fijos (₲)", Valor: fixedTotal },
+                { Concepto: "Neto A Cobrar / Presupuesto Mensual (₲)", Valor: netMonthlyBudget },
+                { Concepto: "Facturas Puntuales Pagadas (₲)", Valor: paidBills },
+                { Concepto: "Facturas Puntuales Pendientes (₲)", Valor: pendingBills },
                 { Concepto: "Total Gastos Cotidianos (₲)", Valor: totalExpenses },
-                { Concepto: "Disponible Neto (₲)", Valor: netBalance },
+                { Concepto: "Saldo Libre Disponible (₲)", Valor: availableBalance },
+                { Concepto: "Capital Total Ahorrado (₲)", Valor: totalSavings },
                 { Concepto: "Límite Diario Sugerido (₲)", Valor: dailyLimit },
                 { Concepto: "", Valor: "" },
                 { Concepto: "Créditos", Valor: "Generado con ViruPy — Desarrollado por Cesar Borja" }
             ];
 
-            // Hoja 2: Facturas y Compromisos
+            const ingresosSheetData = state.incomes.map(inc => ({
+                "Rubro / Concepto": inc.name,
+                "Monto Líquido (₲)": inc.amount
+            }));
+            if (ingresosSheetData.length === 0) {
+                ingresosSheetData.push({ "Rubro / Concepto": "Sin registros", "Monto Líquido (₲)": 0 });
+            }
+
+            const fijosSheetData = state.fixedExpenses.map(f => ({
+                "Concepto Fijo / Descuento": f.name,
+                "Monto Mensual (₲)": f.amount
+            }));
+            if (fijosSheetData.length === 0) {
+                fijosSheetData.push({ "Concepto Fijo / Descuento": "Sin registros", "Monto Mensual (₲)": 0 });
+            }
+
             const facturasSheetData = state.bills.map(b => ({
                 "Servicio / Factura": b.name,
                 "Monto (₲)": b.amount,
@@ -1207,7 +1839,6 @@
                 facturasSheetData.push({ "Servicio / Factura": "Sin registros", "Monto (₲)": 0, "Fecha de Vencimiento": "-", "Estado": "-" });
             }
 
-            // Hoja 3: Historial de Gastos
             const gastosSheetData = state.expenses.map(e => ({
                 "Fecha": e.date,
                 "Descripción": e.desc,
@@ -1220,15 +1851,21 @@
 
             const wb = XLSX.utils.book_new();
             const wsResumen = XLSX.utils.json_to_sheet(resumenSheetData);
+            const wsIngresos = XLSX.utils.json_to_sheet(ingresosSheetData);
+            const wsFijos = XLSX.utils.json_to_sheet(fijosSheetData);
             const wsFacturas = XLSX.utils.json_to_sheet(facturasSheetData);
             const wsGastos = XLSX.utils.json_to_sheet(gastosSheetData);
 
-            wsResumen['!cols'] = [{ wch: 30 }, { wch: 48 }];
+            wsResumen['!cols'] = [{ wch: 36 }, { wch: 48 }];
+            wsIngresos['!cols'] = [{ wch: 30 }, { wch: 20 }];
+            wsFijos['!cols'] = [{ wch: 30 }, { wch: 20 }];
             wsFacturas['!cols'] = [{ wch: 28 }, { wch: 18 }, { wch: 22 }, { wch: 16 }];
             wsGastos['!cols'] = [{ wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 18 }];
 
             XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen Financiero");
-            XLSX.utils.book_append_sheet(wb, wsFacturas, "Facturas y Compromisos");
+            XLSX.utils.book_append_sheet(wb, wsIngresos, "Liquidacion Ingresos");
+            XLSX.utils.book_append_sheet(wb, wsFijos, "Descuentos y Fijos");
+            XLSX.utils.book_append_sheet(wb, wsFacturas, "Facturas Puntuales");
             XLSX.utils.book_append_sheet(wb, wsGastos, "Historial de Gastos");
 
             XLSX.writeFile(wb, `ViruPy_Reporte_${getTodayISO()}.xlsx`);
@@ -1236,13 +1873,17 @@
         }
 
         // =========================================================
-        // 8. AJUSTES, CATEGORÍAS Y COPIA DE SEGURIDAD (.JSON)
+        // 10. AJUSTES, COMPARTIR APK, CATEGORÍAS Y BACKUP (.JSON)
         // =========================================================
         function populateSettingsForm() {
             document.getElementById('cfgUserName').value = state.userName;
-            document.getElementById('cfgSalary').value = formatDots(state.salary);
+            const totalIncomes = state.incomes.reduce((s, inc) => s + inc.amount, 0);
+            document.getElementById('cfgSalaryDisplay').value = formatPYG(totalIncomes);
             document.getElementById('cfgPayday').value = state.payday;
             document.getElementById('cfgPassword').value = state.password || '';
+            document.getElementById('cfgSecurityQuestion').value = state.securityQuestion || '';
+            document.getElementById('cfgSecurityAnswer').value = state.securityAnswer || '';
+            document.getElementById('cfgApkUrl').value = state.apkUrl || '';
 
             const container = document.getElementById('customCategoriesContainer');
             container.innerHTML = '';
@@ -1260,22 +1901,102 @@
         function handleSaveSettings(e) {
             e.preventDefault();
             const newName = document.getElementById('cfgUserName').value.trim();
-            const newSalary = parsePYG(document.getElementById('cfgSalary').value);
             const newPayday = parseInt(document.getElementById('cfgPayday').value, 10);
             const newPassword = document.getElementById('cfgPassword').value.trim();
+            const newQuestion = document.getElementById('cfgSecurityQuestion').value.trim();
+            const newAnswer = document.getElementById('cfgSecurityAnswer').value.trim();
 
             if (newPayday < 1 || newPayday > 31) {
                 notify("El día de cobro debe estar entre 1 y 31", true);
                 return;
             }
 
+            if (newPassword && (!newQuestion || !newAnswer)) {
+                notify("Para usar un PIN, completa también la pregunta y la respuesta de seguridad", true);
+                return;
+            }
+
             state.userName = newName || "Usuario";
-            state.salary = newSalary;
             state.payday = newPayday;
-            state.password = newPassword; // Vacío desactiva el bloqueo
+            state.password = newPassword;
+            state.securityQuestion = newQuestion;
+            state.securityAnswer = newAnswer;
 
             saveState();
-            notify(newPassword ? "Configuración y contraseña guardadas" : "Configuración guardada (bloqueo desactivado)");
+            notify(newPassword ? "Configuración y bloqueo por PIN activados" : "Configuración guardada (sin PIN)");
+        }
+
+        function copyBankAccount() {
+            const alias = document.getElementById('bankAccountText').textContent.trim();
+            const bank = document.getElementById('bankEntityText').textContent.trim();
+            const textToCopy = `${bank} - Alias/CI: ${alias} - Titular: Cesar Borja`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(alias).catch(() => {});
+            } else {
+                const temp = document.createElement('textarea');
+                temp.value = alias;
+                document.body.appendChild(temp);
+                temp.select();
+                document.execCommand('copy');
+                document.body.removeChild(temp);
+            }
+            notify(`Alias copiado: ${alias}`);
+        }
+
+        function contactViaWhatsApp() {
+            const phoneNumber = "595972964019";
+            const text = encodeURIComponent("¡Hola Cesar! Te escribo desde ViruPy para consultarte sobre la aplicación.");
+            window.open(`https://wa.me/${phoneNumber}?text=${text}`, '_blank');
+        }
+
+        function saveApkLink() {
+            const url = document.getElementById('cfgApkUrl').value.trim();
+            state.apkUrl = url;
+            saveState();
+            notify("Enlace de descarga del APK guardado");
+        }
+
+        function getApkLink() {
+            const custom = (state.apkUrl || '').trim();
+            return custom !== '' ? custom : new URL('ViruPy.apk', new URL('./', location.href)).href;
+        }
+
+        function shareViruPy() {
+            const appLink = new URL('./', location.href).href;
+            const shareText = `Te comparto ViruPy, mi app de control financiero en Guaraníes creada por Cesar Borja.\nDescargar APK: ${getApkLink()}\nO usar desde el navegador: ${appLink}`;
+
+            if (navigator.share) {
+                navigator.share({ title: 'ViruPy - Control Financiero', text: shareText }).catch(() => {});
+            } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(shareText);
+                notify("Enlace copiado al portapapeles para compartir por WhatsApp");
+            } else {
+                window.open('https://wa.me/?text=' + encodeURIComponent(shareText), '_blank');
+            }
+        }
+
+        async function downloadApkFile() {
+            const url = getApkLink();
+            if ((state.apkUrl || '').trim() !== '') {
+                window.open(url, '_blank');
+                return;
+            }
+            try {
+                const r = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+                if (!r.ok) {
+                    notify("El APK todavía no está publicado. Sube ViruPy.apk a tu repositorio", true);
+                    return;
+                }
+            } catch (e) {
+                notify("Necesitas internet para descargar el APK", true);
+                return;
+            }
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ViruPy.apk';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
 
         function handleAddCategory() {
@@ -1325,7 +2046,10 @@
                 try {
                     const data = JSON.parse(e.target.result);
                     if (data && typeof data === 'object' && Array.isArray(data.expenses) && Array.isArray(data.bills)) {
-                        state = { ...state, ...data };
+                        state = { ...getDefaultState(), ...data };
+                        if (!Array.isArray(state.incomes)) state.incomes = [];
+                        if (!Array.isArray(state.fixedExpenses)) state.fixedExpenses = [];
+                        if (!Array.isArray(state.savings)) state.savings = [];
                         saveState();
                         notify("¡Datos e historial restaurados con éxito!");
                     } else {
@@ -1340,37 +2064,49 @@
         }
 
         // =========================================================
-        // 9. NAVEGACIÓN ENTRE PESTAÑAS E INICIALIZACIÓN
+        // 11. NAVEGACIÓN ENTRE PESTAÑAS E INICIALIZACIÓN
         // =========================================================
         function switchTab(tabName) {
-            document.querySelectorAll('.app-tab').forEach(el => el.classList.add('d-none'));
-            document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
+            try {
+                document.querySelectorAll('.app-tab').forEach(el => el.classList.add('d-none'));
+                document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
 
-            document.getElementById(`tab-${tabName}`).classList.remove('d-none');
-            document.getElementById(`nav-${tabName}`).classList.add('active');
+                const targetTab = document.getElementById(`tab-${tabName}`);
+                const targetNav = document.getElementById(`nav-${tabName}`);
+                if (targetTab) targetTab.classList.remove('d-none');
+                if (targetNav) targetNav.classList.add('active');
 
-            if (tabName === 'reports') {
-                renderReports();
+                if (tabName === 'reports') {
+                    renderReports();
+                }
+            } catch (err) {
+                console.error("Error cambiando de pestaña:", err);
             }
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            loadState();
-            document.getElementById('expDate').value = getTodayISO();
-            renderAll();
+        window.switchTab = switchTab;
 
-            // Mostrar pantalla de bloqueo solo si el usuario tiene contraseña/PIN configurado
-            if (state.password && state.password.trim() !== '') {
-                document.getElementById('lockScreen').style.display = 'flex';
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                loadState();
+                const expDateEl = document.getElementById('expDate');
+                if (expDateEl) expDateEl.value = getTodayISO();
+                renderAll();
+
+                // Solo bloquea al abrir si el usuario configuró explícitamente una contraseña o PIN
+                if (state.password && state.password.trim() !== '') {
+                    const lockEl = document.getElementById('lockScreen');
+                    if (lockEl) lockEl.style.display = 'flex';
+                }
+            } catch (err) {
+                console.error("Error inicializando ViruPy:", err);
             }
         });
 
         // Registro seguro del Service Worker para funcionamiento PWA offline
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.protocol === 'http:')) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(() => {
-                    // Silencioso en entornos sin sw.js externo
-                });
+                navigator.serviceWorker.register('sw.js').catch(() => {});
             });
         }
     </script>
