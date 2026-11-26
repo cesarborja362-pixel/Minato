@@ -511,7 +511,7 @@
                             <i class="fa-solid fa-calendar-check"></i>
                         </div>
                         <div>
-                            <h6 class="fw-bold text-white mb-1 small">Facturas Puntuales (Día <span id="billPaydayLabel">25</span>)</h6>
+                            <h6 class="fw-bold text-white mb-1 small">Facturas Puntuales (<span id="billPaydayLabel">Día 25</span>)</h6>
                             <p class="text-secondary mb-0" style="font-size: 0.72rem;">
                                 Facturas con vencimiento específico (ANDE, tarjetas, compras). Al pagarlas se descuentan de tu saldo libre.
                             </p>
@@ -636,9 +636,22 @@
                     </div>
                 </div>
 
+                <!-- Comparar Ciclos -->
+                <div class="vp-card p-3 mb-3 border-info border-opacity-25">
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-chart-column me-1 text-info"></i>Comparar Ciclos</h6>
+                    <div id="cycleCompareSummary" class="mb-3"></div>
+                    <div style="position: relative; height: 220px; width: 100%;">
+                        <canvas id="cycleCompareChart"></canvas>
+                    </div>
+                    <div id="cycleCompareTable" class="mt-3"></div>
+                    <small class="text-secondary d-block mt-2" style="font-size: 0.68rem;">
+                        Total = gastos del día + facturas pagadas en cada ciclo. No incluye transferencias a ahorros. Los ciclos pasados se calculan con tu día de cobro actual.
+                    </small>
+                </div>
+
                 <!-- Gráfico Circular (Chart.js) -->
                 <div class="vp-card p-3 mb-3">
-                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-chart-pie me-1 text-info"></i>Gastos Cotidianos por Categoría</h6>
+                    <h6 class="fw-bold small text-uppercase text-secondary mb-3"><i class="fa-solid fa-chart-pie me-1 text-info"></i>Gastos Cotidianos por Categoría (todos los ciclos)</h6>
                     <div style="position: relative; height: 240px; width: 100%;">
                         <canvas id="categoryDoughnutChart"></canvas>
                     </div>
@@ -670,9 +683,17 @@
                                 <input type="text" id="cfgSalaryDisplay" class="form-control form-control-sm fw-bold text-success" readonly title="Se calcula automáticamente desde la pestaña Ingresos/Fact.">
                             </div>
                             <div class="col-5">
-                                <label class="form-label small text-secondary mb-1">Día de Cobro (1-31)</label>
-                                <input type="number" min="1" max="31" id="cfgPayday" class="form-control form-control-sm fw-bold" required>
+                                <label class="form-label small text-secondary mb-1">Día de Cobro (aprox.)</label>
+                                <input type="number" min="1" max="31" id="cfgPayday" class="form-control form-control-sm fw-bold" placeholder="No sé">
                             </div>
+                        </div>
+                        <div class="mb-3 p-2 rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);">
+                            <small class="text-secondary d-block mb-2" style="font-size: 0.7rem;">
+                                <i class="fa-solid fa-circle-info text-info me-1"></i>¿No sabes la fecha exacta de tu cobro? Déjalo vacío (se usa el mes calendario) o pon un día aproximado. Cuando recibas tu sueldo, toca el botón y el ciclo empieza ese día.
+                            </small>
+                            <button type="button" class="btn btn-outline-success btn-sm w-100 fw-bold rounded-3" onclick="markPaidToday()">
+                                <i class="fa-solid fa-calendar-check me-1"></i> Ya cobré hoy: empezar ciclo nuevo
+                            </button>
                         </div>
                         <div class="mb-2">
                             <small class="text-secondary d-block mb-2" style="font-size: 0.68rem;">
@@ -731,7 +752,7 @@
                         <div class="small text-light" style="font-size: 0.75rem; line-height: 1.55;">
                             <div class="d-flex justify-content-between">
                                 <span class="text-secondary">Banco / Entidad:</span>
-                                <span class="fw-semibold text-white" id="bankEntityText">Banco Itaú</span>
+                                <span class="fw-semibold text-white" id="bankEntityText">Banco Continental</span>
                             </div>
                             <div class="d-flex justify-content-between">
                                 <span class="text-secondary">Alias (C.I.):</span>
@@ -882,7 +903,7 @@
                             </h2>
                             <div id="guide2" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
                                 <div class="accordion-body small text-secondary">
-                                    Divide tu saldo libre entre los días reales que faltan para tu próximo cobro (adaptándose automáticamente a meses de 28, 30 o 31 días). Si gastas menos del 80% del límite diario estará en <strong class="text-success">Verde</strong>, entre 80% y 100% en <strong class="text-warning">Amarillo</strong>, y si te pasas en <strong class="text-danger">Rojo</strong>.
+                                    Divide tu saldo libre entre los días reales que faltan para tu próximo cobro (adaptándose automáticamente a meses de 28, 30 o 31 días). Si no sabes la fecha exacta de tu cobro, deja el día vacío en Ajustes o toca «Ya cobré hoy» cuando recibas tu sueldo. Si gastas menos del 80% del límite diario estará en <strong class="text-success">Verde</strong>, entre 80% y 100% en <strong class="text-warning">Amarillo</strong>, y si te pasas en <strong class="text-danger">Rojo</strong>.
                                 </div>
                             </div>
                         </div>
@@ -968,6 +989,7 @@
                 securityAnswer: "",
                 salary: 0,
                 payday: 25,
+                paydayUnknown: false,
                 apkUrl: "",
                 categories: ["Comida", "Transporte", "Supermercado", "Ocio", "Salud", "Varios"],
                 incomes: [],
@@ -1187,9 +1209,9 @@
             const { cycleStart, cycleEnd, daysLeft } = getCycleInfo();
             const todayISO = getTodayISO();
 
-            document.getElementById('headerSubtitle').textContent = `Hola, ${state.userName} • Cobro día ${state.payday}`;
+            document.getElementById('headerSubtitle').textContent = `Hola, ${state.userName} • ${state.paydayUnknown ? 'Ciclo: mes calendario' : 'Cobro día ' + state.payday}`;
             document.getElementById('lockWelcomeUser').textContent = `Hola, ${state.userName} • Acceso Protegido`;
-            document.getElementById('billPaydayLabel').textContent = state.payday;
+            document.getElementById('billPaydayLabel').textContent = state.paydayUnknown ? 'fin de ciclo' : 'Día ' + state.payday;
             document.getElementById('badgeDaysLeft').textContent = `${daysLeft} días rest.`;
 
             const lockBtn = document.getElementById('btnHeaderLock');
@@ -1210,8 +1232,9 @@
             const netMonthlyBudget = totalIncomes - fixedTotal;
 
             // 3. Facturas Puntuales Pagadas
+            // Solo cuentan las facturas pagadas dentro del ciclo actual
             const paidBillsTotal = state.bills
-                .filter(b => b.paid)
+                .filter(b => b.paid && isDateInCurrentCycle(b.paidDate || b.dueDate, cycleStart, cycleEnd))
                 .reduce((sum, b) => sum + b.amount, 0);
 
             // 4. Gastos Cotidianos del Ciclo
@@ -1483,6 +1506,164 @@
         }
 
         // =========================================================
+        // 6B. COMPARAR CICLOS Y FACTURAS POR CICLO
+        // =========================================================
+        let cycleChartInstance = null;
+
+        function dateToISO(d) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function fmtShortDate(d) {
+            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function inRange(dateStr, start, end) {
+            if (!dateStr) return false;
+            const d = new Date(dateStr + 'T00:00:00');
+            return d >= start && d < end;
+        }
+
+        // Devuelve los últimos n ciclos: [0] = actual, [1] = anterior, ...
+        function getCycleRanges(n) {
+            const { cycleStart, cycleEnd } = getCycleInfo();
+            const ranges = [];
+            for (let k = 0; k < n; k++) {
+                let start;
+                if (k === 0) {
+                    start = new Date(cycleStart);
+                } else {
+                    const y = cycleStart.getFullYear();
+                    const m = cycleStart.getMonth() - k;
+                    const last = new Date(y, m + 1, 0).getDate();
+                    start = new Date(y, m, Math.min(state.payday, last));
+                }
+                start.setHours(0, 0, 0, 0);
+                ranges.push({ start, end: k === 0 ? new Date(cycleEnd) : ranges[k - 1].start });
+            }
+            return ranges;
+        }
+
+        // cap (opcional): fecha límite exclusiva, para comparar "hasta el mismo día"
+        function cycleStats(range, cap) {
+            const end = cap && cap < range.end ? cap : range.end;
+            const cats = {};
+            let daily = 0;
+            state.expenses.forEach(e => {
+                if (e.isSavingsTransfer) return;
+                if (inRange(e.date, range.start, end)) {
+                    daily += e.amount;
+                    cats[e.category] = (cats[e.category] || 0) + e.amount;
+                }
+            });
+            let bills = 0;
+            state.bills.forEach(b => {
+                if (b.paid && inRange(b.paidDate || b.dueDate, range.start, end)) bills += b.amount;
+            });
+            return { daily, bills, total: daily + bills, cats };
+        }
+
+        function renderCycleComparison() {
+            const summaryEl = document.getElementById('cycleCompareSummary');
+            const tableEl = document.getElementById('cycleCompareTable');
+            const canvasEl = document.getElementById('cycleCompareChart');
+            if (!summaryEl || !tableEl || !canvasEl) return;
+
+            const ranges = getCycleRanges(6);
+            const stats = ranges.map(r => cycleStats(r));
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const msDay = 24 * 60 * 60 * 1000;
+            const elapsed = Math.floor((today - ranges[0].start) / msDay) + 1;
+            const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+            const curSoFar = cycleStats(ranges[0], tomorrow);
+            const prevCap = new Date(ranges[1].start.getFullYear(), ranges[1].start.getMonth(), ranges[1].start.getDate() + elapsed);
+            const prevSame = cycleStats(ranges[1], prevCap);
+
+            // ---- Resumen en texto ----
+            if (stats[1].total === 0) {
+                summaryEl.innerHTML = `<div class="small text-secondary">Aún no hay un ciclo anterior con gastos para comparar. Cuando termine tu ciclo actual verás aquí cuánto gastaste respecto al anterior.</div>
+                    <div class="small text-white mt-2">Este ciclo llevas: <strong>${formatPYG(curSoFar.total)}</strong></div>`;
+            } else {
+                const diff = curSoFar.total - prevSame.total;
+                const pct = prevSame.total > 0 ? Math.round(Math.abs(diff) / prevSame.total * 100) : null;
+                let verdict;
+                if (diff > 0) {
+                    verdict = `<span class="text-danger fw-bold">${formatPYG(diff)} MÁS</span>${pct !== null ? ` (+${pct}%)` : ''} que en el mismo punto del ciclo anterior`;
+                } else if (diff < 0) {
+                    verdict = `<span class="text-success fw-bold">${formatPYG(Math.abs(diff))} MENOS</span>${pct !== null ? ` (-${pct}%)` : ''} que en el mismo punto del ciclo anterior`;
+                } else {
+                    verdict = `<span class="text-info fw-bold">Igual</span> que en el mismo punto del ciclo anterior`;
+                }
+                summaryEl.innerHTML = `
+                    <div class="small text-white mb-1">Llevas gastado <strong>${formatPYG(curSoFar.total)}</strong> (día ${elapsed} del ciclo).</div>
+                    <div class="small text-light mb-1">Eso es ${verdict}.</div>
+                    <div class="small text-secondary">Ciclo anterior completo: ${formatPYG(stats[1].total)}</div>`;
+            }
+
+            // ---- Gráfico de barras (del más viejo al actual) ----
+            const order = ranges.map((r, i) => i).reverse();
+            const labels = order.map(i => i === 0 ? fmtShortDate(ranges[i].start) + ' (actual)' : fmtShortDate(ranges[i].start));
+            if (cycleChartInstance) { cycleChartInstance.destroy(); cycleChartInstance = null; }
+            if (typeof Chart !== 'undefined') {
+                cycleChartInstance = new Chart(canvasEl.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: 'Gastos del día', data: order.map(i => stats[i].daily), backgroundColor: '#059669', borderRadius: 4 },
+                            { label: 'Facturas pagadas', data: order.map(i => stats[i].bills), backgroundColor: '#f59e0b', borderRadius: 4 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { stacked: true, ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+                            y: { stacked: true, ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v >= 1000000 ? (v / 1000000) + 'M' : (v >= 1000 ? (v / 1000) + 'k' : v) }, grid: { color: 'rgba(148,163,184,0.12)' } }
+                        },
+                        plugins: {
+                            legend: { labels: { color: '#cbd5e1', boxWidth: 12, font: { size: 11 } } },
+                            tooltip: { callbacks: { label: c => `${c.dataset.label}: ${formatPYG(c.parsed.y)}` } }
+                        }
+                    }
+                });
+            }
+
+            // ---- Tabla por categoría (3 ciclos) ----
+            const catSet = new Set();
+            [0, 1, 2].forEach(i => Object.keys(stats[i].cats).forEach(c => catSet.add(c)));
+            if (catSet.size === 0) {
+                tableEl.innerHTML = '';
+                return;
+            }
+            const cats = [...catSet].sort((a, b) => (stats[0].cats[b] || 0) - (stats[0].cats[a] || 0) || (stats[1].cats[b] || 0) - (stats[1].cats[a] || 0));
+            const rows = cats.map(c => `
+                <tr>
+                    <td class="text-white">${escapeHTML(c)}</td>
+                    <td class="text-end fw-bold">${formatPYG(stats[0].cats[c] || 0)}</td>
+                    <td class="text-end">${formatPYG(stats[1].cats[c] || 0)}</td>
+                    <td class="text-end text-secondary">${formatPYG(stats[2].cats[c] || 0)}</td>
+                </tr>`).join('');
+            tableEl.innerHTML = `
+                <div class="fw-bold small text-uppercase text-secondary mb-1">Por categoría</div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-borderless align-middle mb-0" style="font-size: 0.72rem; --bs-table-bg: transparent; --bs-table-color: #e2e8f0;">
+                        <thead>
+                            <tr class="text-secondary">
+                                <th>Categoría</th>
+                                <th class="text-end">Actual<br><span style="font-size:0.6rem">${fmtShortDate(ranges[0].start)}</span></th>
+                                <th class="text-end">Anterior<br><span style="font-size:0.6rem">${fmtShortDate(ranges[1].start)}</span></th>
+                                <th class="text-end">Hace 2<br><span style="font-size:0.6rem">${fmtShortDate(ranges[2].start)}</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        }
+
+        // =========================================================
         // 7. FACTURAS PUNTUALES Y ALERTAS DE VENCIMIENTO (<= 5 DÍAS)
         // =========================================================
         function handleAddBill(e) {
@@ -1516,6 +1697,7 @@
             const bill = state.bills.find(b => b.id === id);
             if (!bill) return;
             bill.paid = !bill.paid;
+            bill.paidDate = bill.paid ? getTodayISO() : null;
             saveState();
             notify(bill.paid ? `Factura "${bill.name}" pagada` : `Factura "${bill.name}" marcada pendiente`);
         }
@@ -1526,7 +1708,7 @@
                 notify("No hay facturas pendientes por pagar");
                 return;
             }
-            state.bills.forEach(b => b.paid = true);
+            state.bills.forEach(b => { if (!b.paid) { b.paid = true; b.paidDate = getTodayISO(); } });
             saveState();
             notify(`¡${pending.length} factura(s) pagada(s) del Saldo Libre!`);
         }
@@ -1722,6 +1904,7 @@
         let chartInstance = null;
 
         function renderReports() {
+            try { renderCycleComparison(); } catch (err) { console.error("Error comparando ciclos:", err); }
             const totals = {};
             state.expenses.forEach(e => {
                 totals[e.category] = (totals[e.category] || 0) + e.amount;
@@ -1787,7 +1970,8 @@
             const totalIncomes = state.incomes.reduce((s, inc) => s + inc.amount, 0);
             const fixedTotal = state.fixedExpenses.reduce((s, f) => s + f.amount, 0);
             const netMonthlyBudget = totalIncomes - fixedTotal;
-            const paidBills = state.bills.filter(b => b.paid).reduce((s, b) => s + b.amount, 0);
+            const _ci = getCycleInfo();
+            const paidBills = state.bills.filter(b => b.paid && isDateInCurrentCycle(b.paidDate || b.dueDate, _ci.cycleStart, _ci.cycleEnd)).reduce((s, b) => s + b.amount, 0);
             const pendingBills = state.bills.filter(b => !b.paid).reduce((s, b) => s + b.amount, 0);
             const totalExpenses = state.expenses.reduce((s, e) => s + e.amount, 0);
             const totalSavings = state.savings.reduce((s, item) => item.type === 'deposit' ? s + item.amount : s - item.amount, 0);
@@ -1798,7 +1982,7 @@
                 { Concepto: "Aplicación", Valor: "ViruPy - Control Financiero (PYG)" },
                 { Concepto: "Usuario", Valor: state.userName },
                 { Concepto: "Fecha del Reporte", Valor: getTodayISO() },
-                { Concepto: "Día de Cobro Configurado", Valor: `Día ${state.payday}` },
+                { Concepto: "Día de Cobro Configurado", Valor: state.paydayUnknown ? 'No definido (mes calendario)' : `Día ${state.payday}` },
                 { Concepto: "Días Restantes del Ciclo", Valor: daysLeft },
                 { Concepto: "Total Ingresos Líquidos (₲)", Valor: totalIncomes },
                 { Concepto: "Total Descuentos y Gastos Fijos (₲)", Valor: fixedTotal },
@@ -1868,6 +2052,26 @@
             XLSX.utils.book_append_sheet(wb, wsFacturas, "Facturas Puntuales");
             XLSX.utils.book_append_sheet(wb, wsGastos, "Historial de Gastos");
 
+            try {
+                const rr = getCycleRanges(6);
+                const st = rr.map(r => cycleStats(r));
+                const catSet = new Set();
+                st.forEach(x => Object.keys(x.cats).forEach(c => catSet.add(c)));
+                const cmpRows = rr.map((r, i) => {
+                    const row = {
+                        "Ciclo desde": dateToISO(r.start),
+                        "Hasta (sin incluir)": dateToISO(r.end),
+                        "Gastos del día (₲)": st[i].daily,
+                        "Facturas pagadas (₲)": st[i].bills,
+                        "Total (₲)": st[i].total
+                    };
+                    catSet.forEach(c => { row[c + " (₲)"] = st[i].cats[c] || 0; });
+                    return row;
+                });
+                const wsCmp = XLSX.utils.json_to_sheet(cmpRows);
+                XLSX.utils.book_append_sheet(wb, wsCmp, "Comparar Ciclos");
+            } catch (err) { console.error(err); }
+
             XLSX.writeFile(wb, `ViruPy_Reporte_${getTodayISO()}.xlsx`);
             notify("Reporte Excel (.xlsx) descargado");
         }
@@ -1879,7 +2083,7 @@
             document.getElementById('cfgUserName').value = state.userName;
             const totalIncomes = state.incomes.reduce((s, inc) => s + inc.amount, 0);
             document.getElementById('cfgSalaryDisplay').value = formatPYG(totalIncomes);
-            document.getElementById('cfgPayday').value = state.payday;
+            document.getElementById('cfgPayday').value = state.paydayUnknown ? '' : state.payday;
             document.getElementById('cfgPassword').value = state.password || '';
             document.getElementById('cfgSecurityQuestion').value = state.securityQuestion || '';
             document.getElementById('cfgSecurityAnswer').value = state.securityAnswer || '';
@@ -1898,15 +2102,25 @@
             });
         }
 
+        function markPaidToday() {
+            if (!confirm("¿Ya cobraste tu sueldo? El ciclo nuevo empezará hoy.")) return;
+            state.payday = new Date().getDate();
+            state.paydayUnknown = false;
+            saveState();
+            notify(`Ciclo nuevo desde hoy (día ${state.payday})`);
+        }
+
         function handleSaveSettings(e) {
             e.preventDefault();
             const newName = document.getElementById('cfgUserName').value.trim();
-            const newPayday = parseInt(document.getElementById('cfgPayday').value, 10);
+            const paydayRaw = document.getElementById('cfgPayday').value.trim();
+            const paydayUnknown = paydayRaw === '';
+            const newPayday = paydayUnknown ? 1 : parseInt(paydayRaw, 10);
             const newPassword = document.getElementById('cfgPassword').value.trim();
             const newQuestion = document.getElementById('cfgSecurityQuestion').value.trim();
             const newAnswer = document.getElementById('cfgSecurityAnswer').value.trim();
 
-            if (newPayday < 1 || newPayday > 31) {
+            if (isNaN(newPayday) || newPayday < 1 || newPayday > 31) {
                 notify("El día de cobro debe estar entre 1 y 31", true);
                 return;
             }
@@ -1918,6 +2132,7 @@
 
             state.userName = newName || "Usuario";
             state.payday = newPayday;
+            state.paydayUnknown = paydayUnknown;
             state.password = newPassword;
             state.securityQuestion = newQuestion;
             state.securityAnswer = newAnswer;
